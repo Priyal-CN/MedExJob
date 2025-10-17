@@ -54,6 +54,6 @@
       },
       "scripts": {
           "dev": "vite",
-          "build": "vite build"
+          "build": "vite chmod +x node_modules/.bin/vite && vite build"
       }
   }
