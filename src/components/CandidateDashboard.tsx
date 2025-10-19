@@ -5,12 +5,14 @@ import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { mockJobs, mockCandidate, mockNotifications } from '../data/mockData';
 import { Progress } from './ui/progress';
+import { useAuth } from '../contexts/AuthContext';
 
 interface CandidateDashboardProps {
   onNavigate: (page: string, jobId?: string) => void;
 }
 
 export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
+  const { user } = useAuth();
   const savedJobs = mockJobs.filter(job => mockCandidate.savedJobs.includes(job.id));
   const appliedJobs = [
     { ...mockJobs[0], status: 'under_review', appliedDate: '2025-10-12' },
@@ -26,7 +28,7 @@ export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl text-gray-900 mb-2">Welcome, {mockCandidate.name}</h1>
+          <h1 className="text-3xl text-gray-900 mb-2">Welcome, {user?.name || mockCandidate.name}</h1>
           <p className="text-gray-600">Manage your job applications and profile</p>
         </div>
 
@@ -249,7 +251,11 @@ export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
                   <FileText className="w-4 h-4 mr-2" />
                   Update Resume
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => onNavigate('job-alerts')}
+                >
                   <Bell className="w-4 h-4 mr-2" />
                   Manage Alerts
                 </Button>
@@ -273,7 +279,11 @@ export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
                   </div>
                 ))}
               </div>
-              <Button variant="link" className="w-full mt-2 text-blue-600">
+              <Button 
+                variant="link" 
+                className="w-full mt-2 text-blue-600"
+                onClick={() => onNavigate('notifications')}
+              >
                 View All Notifications
               </Button>
             </Card>

@@ -82,7 +82,12 @@ export function Header({ currentPage, onNavigate, isAuthenticated, userRole }: H
             {isAuthenticated ? (
               <>
                 {/* Notifications */}
-                <Button variant="ghost" size="icon" className="relative">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative"
+                  onClick={() => onNavigate('notifications')}
+                >
                   <Bell className="w-5 h-5" />
                   <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center bg-red-500">
                     3
@@ -105,11 +110,43 @@ export function Header({ currentPage, onNavigate, isAuthenticated, userRole }: H
                     <DropdownMenuItem onClick={() => onNavigate('profile')}>
                       Profile
                     </DropdownMenuItem>
-                    {userRole === 'employer' && (
-                      <DropdownMenuItem onClick={() => onNavigate('subscription')}>
-                        Subscription
+                    <DropdownMenuItem onClick={() => onNavigate('applications')}>
+                      {userRole === 'candidate' ? 'My Applications' : 'Manage Applications'}
+                    </DropdownMenuItem>
+                    {userRole === 'candidate' && (
+                      <DropdownMenuItem onClick={() => onNavigate('job-alerts')}>
+                        Job Alerts
                       </DropdownMenuItem>
                     )}
+                    {userRole === 'employer' && (
+                      <>
+                        <DropdownMenuItem onClick={() => onNavigate('post-job')}>
+                          Post New Job
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onNavigate('verification')}>
+                          Verification
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onNavigate('subscription')}>
+                          Subscription
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onNavigate('analytics')}>
+                          Analytics
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {userRole === 'admin' && (
+                      <>
+                        <DropdownMenuItem onClick={() => onNavigate('analytics')}>
+                          Platform Analytics
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onNavigate('fraud-protection')}>
+                          Fraud Protection
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    <DropdownMenuItem onClick={() => onNavigate('fraud-protection')}>
+                      Report Fraud
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => onNavigate('login')}>
                       Logout

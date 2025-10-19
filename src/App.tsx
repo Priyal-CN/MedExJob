@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { HomePage } from './components/HomePage';
@@ -9,31 +10,31 @@ import { CandidateDashboard } from './components/CandidateDashboard';
 import { EmployerDashboard } from './components/EmployerDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AboutPage } from './components/AboutPage';
+import { SubscriptionPage } from './components/SubscriptionPage';
+import { JobPostingForm } from './components/JobPostingForm';
+import { NotificationCenter } from './components/NotificationCenter';
+import { JobAlerts } from './components/JobAlerts';
+import { ApplicationTracking } from './components/ApplicationTracking';
+import { EmployerVerification } from './components/EmployerVerification';
+import { AnalyticsDashboard } from './components/AnalyticsDashboard';
+import { FraudProtection } from './components/FraudProtection';
 
-type Page = 'home' | 'jobs' | 'govt-jobs' | 'private-jobs' | 'job-detail' | 'about' | 'login' | 'register' | 'dashboard' | 'profile' | 'subscription';
-type UserRole = 'admin' | 'employer' | 'candidate' | null;
+type Page = 'home' | 'jobs' | 'govt-jobs' | 'private-jobs' | 'job-detail' | 'about' | 'login' | 'register' | 'dashboard' | 'profile' | 'subscription' | 'post-job' | 'notifications' | 'job-alerts' | 'applications' | 'verification' | 'analytics' | 'fraud-protection';
 
-export default function App() {
+function AppContent() {
+  const { user, logout, isAuthenticated } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState<UserRole>(null);
 
   const handleNavigate = (page: string, param?: string) => {
     setCurrentPage(page as Page);
-    
+
     if (page === 'job-detail' && param) {
       setSelectedJobId(param);
     }
-    
-    if (page === 'dashboard' && param) {
-      setUserRole(param as UserRole);
-      setIsAuthenticated(true);
-    }
 
     if (page === 'login' || page === 'register') {
-      setIsAuthenticated(false);
-      setUserRole(null);
+      logout();
     }
 
     // Scroll to top on navigation
@@ -75,10 +76,10 @@ export default function App() {
         if (!isAuthenticated) {
           return <AuthPage mode="login" onNavigate={handleNavigate} />;
         }
-        
-        if (userRole === 'admin') {
+
+        if (user?.role === 'admin') {
           return <AdminDashboard onNavigate={handleNavigate} />;
-        } else if (userRole === 'employer') {
+        } else if (user?.role === 'employer') {
           return <EmployerDashboard onNavigate={handleNavigate} />;
         } else {
           return <CandidateDashboard onNavigate={handleNavigate} />;
@@ -86,6 +87,51 @@ export default function App() {
       
       case 'about':
         return <AboutPage onNavigate={handleNavigate} />;
+      
+      case 'subscription':
+        return <SubscriptionPage onNavigate={handleNavigate} />;
+      
+      case 'post-job':
+        if (!isAuthenticated || user?.role !== 'employer') {
+          return <AuthPage mode="login" onNavigate={handleNavigate} />;
+        }
+        return <JobPostingForm onNavigate={handleNavigate} />;
+
+      case 'notifications':
+        if (!isAuthenticated) {
+          return <AuthPage mode="login" onNavigate={handleNavigate} />;
+        }
+        return <NotificationCenter userId={user?.id || 'current-user'} userRole={user?.role || 'candidate'} />;
+
+      case 'job-alerts':
+        if (!isAuthenticated || user?.role !== 'candidate') {
+          return <AuthPage mode="login" onNavigate={handleNavigate} />;
+        }
+        return <JobAlerts />;
+
+      case 'applications':
+        if (!isAuthenticated) {
+          return <AuthPage mode="login" onNavigate={handleNavigate} />;
+        }
+        return <ApplicationTracking userRole={user?.role || 'candidate'} userId={user?.id || 'current-user'} />;
+
+      case 'verification':
+        if (!isAuthenticated || user?.role !== 'employer') {
+          return <AuthPage mode="login" onNavigate={handleNavigate} />;
+        }
+        return <EmployerVerification onNavigate={handleNavigate} />;
+
+      case 'analytics':
+        if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'employer')) {
+          return <AuthPage mode="login" onNavigate={handleNavigate} />;
+        }
+        return <AnalyticsDashboard userRole={user?.role || 'employer'} userId={user?.id || 'current-user'} />;
+
+      case 'fraud-protection':
+        if (!isAuthenticated) {
+          return <AuthPage mode="login" onNavigate={handleNavigate} />;
+        }
+        return <FraudProtection userRole={user?.role || 'candidate'} userId={user?.id || 'current-user'} />;
       
       default:
         return <HomePage onNavigate={handleNavigate} />;
@@ -97,19 +143,27 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col">
       {showHeaderFooter && (
-        <Header 
+        <Header
           currentPage={currentPage}
           onNavigate={handleNavigate}
           isAuthenticated={isAuthenticated}
-          userRole={userRole || undefined}
+          userRole={user?.role || undefined}
         />
       )}
-      
+
       <main className="flex-1">
         {renderPage()}
       </main>
-      
+
       {showHeaderFooter && <Footer onNavigate={handleNavigate} />}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

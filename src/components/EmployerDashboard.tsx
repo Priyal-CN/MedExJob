@@ -35,7 +35,10 @@ export function EmployerDashboard({ onNavigate }: EmployerDashboardProps) {
             <h1 className="text-3xl text-gray-900 mb-2">{mockEmployer.companyName}</h1>
             <p className="text-gray-600">Manage your job postings and applications</p>
           </div>
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => onNavigate('post-job')}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Post New Job
           </Button>
@@ -98,6 +101,7 @@ export function EmployerDashboard({ onNavigate }: EmployerDashboardProps) {
             <TabsTrigger value="jobs">My Jobs</TabsTrigger>
             <TabsTrigger value="applications">Applications</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="verification">Verification</TabsTrigger>
           </TabsList>
 
           <TabsContent value="jobs" className="mt-6">
@@ -251,12 +255,30 @@ export function EmployerDashboard({ onNavigate }: EmployerDashboardProps) {
                       Active
                     </Badge>
                   </div>
-                  <Button variant="outline" className="w-full mt-4">
+                  <Button 
+                    variant="outline" 
+                    className="w-full mt-4"
+                    onClick={() => onNavigate('subscription')}
+                  >
                     Manage Subscription
                   </Button>
                 </div>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="verification" className="mt-6">
+            <Card className="p-6">
+              <div className="text-center py-8">
+                <h3 className="text-lg text-gray-900 mb-4">Employer Verification</h3>
+                <p className="text-gray-600 mb-6">
+                  Complete your verification to access all features and build trust with candidates.
+                </p>
+                <Button onClick={() => onNavigate('verification')}>
+                  Go to Verification
+                </Button>
+              </div>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

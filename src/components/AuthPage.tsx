@@ -6,6 +6,7 @@ import { Label } from './ui/label';
 import { Card } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AuthPageProps {
   mode: 'login' | 'register';
@@ -13,18 +14,59 @@ interface AuthPageProps {
 }
 
 export function AuthPage({ mode, onNavigate }: AuthPageProps) {
+  const { login, register } = useAuth();
   const [userRole, setUserRole] = useState<'candidate' | 'employer'>('candidate');
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would authenticate the user
-    onNavigate('dashboard', userRole);
+    setLoading(true);
+    setErrors({});
+
+    const formData = new FormData(e.target as HTMLFormElement);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    try {
+      const loggedInUser = await login(email, password);
+      // Use the role from the successful login response to navigate
+      onNavigate('dashboard', loggedInUser.role);
+    } catch (err: any) {
+      setErrors({ form: err.message || 'Login failed. Please check your credentials.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would create a new user account
-    onNavigate('dashboard', userRole);
+    setLoading(true);
+    setErrors({});
+
+    const formData = new FormData(e.target as HTMLFormElement);
+    const userData = {
+      name: formData.get('name') as string,
+      email: formData.get('email') as string,
+      phone: formData.get('phone') as string,
+      password: formData.get('password') as string,
+      role: userRole,
+      ...(userRole === 'employer' && { companyName: formData.get('company') as string })
+    };
+
+    try {
+      await register(userData);
+      // After registration, redirect to login
+      onNavigate('login');
+    } catch (err: any) {
+      if (err.errors) {
+        setErrors(err.errors);
+      } else {
+        setErrors({ form: err.message || 'Registration failed. Please try again.' });
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,6 +93,7 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
                     id="email"
+                    name="email"
                     type="email"
                     placeholder="your.email@example.com"
                     className="pl-10"
@@ -65,6 +108,7 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
                     id="password"
+                    name="password"
                     type="password"
                     placeholder="••••••••"
                     className="pl-10"
@@ -87,8 +131,9 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
                 </RadioGroup>
               </div>
 
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-                Login
+              {errors.form && <p className="text-red-500 text-sm">{errors.form}</p>}
+              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+                {loading ? 'Logging in...' : 'Login'}
               </Button>
 
               <div className="text-center">
@@ -125,11 +170,13 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
                     id="name"
+                    name="name"
                     type="text"
                     placeholder="Enter your full name"
                     className="pl-10"
                     required
                   />
+                  {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
                 </div>
               </div>
 
@@ -140,6 +187,7 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       id="company"
+                      name="company"
                       type="text"
                       placeholder="Enter company name"
                       className="pl-10"
@@ -155,11 +203,13 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
                     id="phone"
+                    name="phone"
                     type="tel"
                     placeholder="+91 98765 43210"
                     className="pl-10"
                     required
                   />
+                  {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                 </div>
               </div>
 
@@ -169,11 +219,13 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
                     id="email-register"
+                    name="email"
                     type="email"
                     placeholder="your.email@example.com"
                     className="pl-10"
                     required
                   />
+                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                 </div>
               </div>
 
@@ -183,16 +235,19 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
                     id="password-register"
+                    name="password"
                     type="password"
                     placeholder="••••••••"
                     className="pl-10"
                     required
                   />
+                  {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
                 </div>
               </div>
 
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-                Create Account
+              {errors.form && <p className="text-red-500 text-sm">{errors.form}</p>}
+              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+                {loading ? 'Creating Account...' : 'Create Account'}
               </Button>
 
               <p className="text-xs text-center text-gray-500">
