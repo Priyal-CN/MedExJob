@@ -1,4 +1,4 @@
-import { Plus, Briefcase, Users, Building2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Plus, Briefcase, Users, Building2, CheckCircle, XCircle, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -28,15 +28,28 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl text-gray-900 mb-2">Admin Dashboard</h1>
-            <p className="text-gray-600">Complete control over MedExJob.com</p>
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onNavigate('home')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Go Back
+            </Button>
           </div>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Post Government Job
-          </Button>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl text-gray-900 mb-2">Admin Dashboard</h1>
+              <p className="text-gray-600">Complete control over MedExJob.com</p>
+            </div>
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Post Government Job
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}

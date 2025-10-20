@@ -94,65 +94,14 @@ export function Header({ currentPage, onNavigate, isAuthenticated, userRole }: H
                   </Badge>
                 </Button>
 
-                {/* User Menu */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <User className="w-5 h-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => onNavigate('dashboard')}>
-                      Dashboard
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onNavigate('profile')}>
-                      Profile
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onNavigate('applications')}>
-                      {userRole === 'candidate' ? 'My Applications' : 'Manage Applications'}
-                    </DropdownMenuItem>
-                    {userRole === 'candidate' && (
-                      <DropdownMenuItem onClick={() => onNavigate('job-alerts')}>
-                        Job Alerts
-                      </DropdownMenuItem>
-                    )}
-                    {userRole === 'employer' && (
-                      <>
-                        <DropdownMenuItem onClick={() => onNavigate('post-job')}>
-                          Post New Job
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onNavigate('verification')}>
-                          Verification
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onNavigate('subscription')}>
-                          Subscription
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onNavigate('analytics')}>
-                          Analytics
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    {userRole === 'admin' && (
-                      <>
-                        <DropdownMenuItem onClick={() => onNavigate('analytics')}>
-                          Platform Analytics
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onNavigate('fraud-protection')}>
-                          Fraud Protection
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    <DropdownMenuItem onClick={() => onNavigate('fraud-protection')}>
-                      Report Fraud
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => onNavigate('login')}>
-                      Logout
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {/* Profile Icon - Navigate to Dashboard */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onNavigate('dashboard')}
+                >
+                  <User className="w-5 h-5" />
+                </Button>
               </>
             ) : (
               <>

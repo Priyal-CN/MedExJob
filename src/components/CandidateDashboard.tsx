@@ -1,4 +1,4 @@
-import { Briefcase, BookmarkIcon, Bell, User, FileText, TrendingUp } from 'lucide-react';
+import { Briefcase, BookmarkIcon, Bell, User, FileText, TrendingUp, ArrowLeft, Trash2, Heart } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { mockJobs, mockCandidate, mockNotifications } from '../data/mockData';
 import { Progress } from './ui/progress';
 import { useAuth } from '../contexts/AuthContext';
+import { useState } from 'react';
 
 interface CandidateDashboardProps {
   onNavigate: (page: string, jobId?: string) => void;
@@ -13,21 +14,45 @@ interface CandidateDashboardProps {
 
 export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
   const { user } = useAuth();
-  const savedJobs = mockJobs.filter(job => mockCandidate.savedJobs.includes(job.id));
-  const appliedJobs = [
+  const [savedJobs, setSavedJobs] = useState(mockJobs.filter(job => mockCandidate.savedJobs.includes(job.id)));
+  const [appliedJobs, setAppliedJobs] = useState([
     { ...mockJobs[0], status: 'under_review', appliedDate: '2025-10-12' },
     { ...mockJobs[2], status: 'shortlisted', appliedDate: '2025-10-10' },
     { ...mockJobs[5], status: 'interview', appliedDate: '2025-10-08', interviewDate: '2025-10-20' },
-  ];
+  ]);
 
   const notifications = mockNotifications.filter(n => n.userId === mockCandidate.id);
   const profileCompleteness = 75;
+
+  const handleRemoveSavedJob = (jobId: string) => {
+    setSavedJobs(prev => prev.filter(job => job.id !== jobId));
+  };
+
+  const handleSaveForLater = (job: any) => {
+    setSavedJobs(prev => [...prev, job]);
+  };
+
+  const handleTrackStatus = (jobId: string) => {
+    // In a real app, this would open a modal or navigate to a tracking page
+    alert(`Tracking status for job ${jobId}`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onNavigate('home')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Go Back
+            </Button>
+          </div>
           <h1 className="text-3xl text-gray-900 mb-2">Welcome, {user?.name || mockCandidate.name}</h1>
           <p className="text-gray-600">Manage your job applications and profile</p>
         </div>
@@ -144,7 +169,7 @@ export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
                         <Button variant="outline" size="sm" onClick={() => onNavigate('job-detail', job.id)}>
                           View Job
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => handleTrackStatus(job.id)}>
                           Track Status
                         </Button>
                       </div>
@@ -180,7 +205,8 @@ export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
                         <Button size="sm" onClick={() => onNavigate('job-detail', job.id)}>
                           Apply Now
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => handleRemoveSavedJob(job.id)}>
+                          <Trash2 className="w-4 h-4 mr-1" />
                           Remove
                         </Button>
                       </div>
@@ -217,7 +243,8 @@ export function CandidateDashboard({ onNavigate }: CandidateDashboardProps) {
                         <Button size="sm" onClick={() => onNavigate('job-detail', job.id)}>
                           View Details
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => handleSaveForLater(job)}>
+                          <Heart className="w-4 h-4 mr-1" />
                           Save for Later
                         </Button>
                       </div>

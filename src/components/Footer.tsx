@@ -119,9 +119,9 @@ export function Footer({ onNavigate }: FooterProps) {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
             <p>&copy; 2025 MedExJob.com. All rights reserved.</p>
             <div className="flex gap-6">
-              <button className="hover:text-blue-400 transition-colors">Privacy Policy</button>
-              <button className="hover:text-blue-400 transition-colors">Terms & Conditions</button>
-              <button className="hover:text-blue-400 transition-colors">FAQ</button>
+              <button onClick={() => onNavigate('privacy-policy')} className="hover:text-blue-400 transition-colors">Privacy Policy</button>
+              <button onClick={() => onNavigate('terms-conditions')} className="hover:text-blue-400 transition-colors">Terms & Conditions</button>
+              <button onClick={() => onNavigate('faq')} className="hover:text-blue-400 transition-colors">FAQ</button>
             </div>
           </div>
         </div>

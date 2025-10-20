@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Mail, Lock, User, Phone, Building2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -18,6 +18,17 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
   const [userRole, setUserRole] = useState<'candidate' | 'employer'>('candidate');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (mode === 'login') {
+      const flag = localStorage.getItem('registrationSuccess');
+      if (flag) {
+        setSuccessMessage('Registration successful! Please log in to continue.');
+        localStorage.removeItem('registrationSuccess');
+      }
+    }
+  }, [mode]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +67,8 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
 
     try {
       await register(userData);
-      // After registration, redirect to login
+      // Mark success and redirect to login to show a success message
+      localStorage.setItem('registrationSuccess', '1');
       onNavigate('login');
     } catch (err: any) {
       if (err.errors) {
@@ -86,6 +98,11 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
           </TabsList>
 
           <TabsContent value="login" className="space-y-4 mt-6">
+            {successMessage && (
+              <div className="text-green-700 bg-green-100 border border-green-200 rounded px-3 py-2 text-sm">
+                {successMessage}
+              </div>
+            )}
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <Label htmlFor="email">Email</Label>

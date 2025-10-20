@@ -1,4 +1,4 @@
-import { Plus, Briefcase, Users, Eye, CheckCircle, XCircle, Calendar } from 'lucide-react';
+import { Plus, Briefcase, Users, Eye, CheckCircle, XCircle, Calendar, ArrowLeft, Edit, Trash2 } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -12,36 +12,66 @@ import {
   TableRow,
 } from './ui/table';
 import { mockJobs, mockApplications, mockEmployer } from '../data/mockData';
+import { useState } from 'react';
 
 interface EmployerDashboardProps {
   onNavigate: (page: string) => void;
 }
 
 export function EmployerDashboard({ onNavigate }: EmployerDashboardProps) {
-  const myJobs = mockJobs.filter(job => job.employerId === mockEmployer.id);
-  const myApplications = mockApplications.filter(app => 
+  const [myJobs, setMyJobs] = useState(mockJobs.filter(job => job.employerId === mockEmployer.id));
+  const myApplications = mockApplications.filter(app =>
     myJobs.some(job => job.id === app.jobId)
   );
 
   const totalViews = myJobs.reduce((sum, job) => sum + job.views, 0);
   const totalApplications = myJobs.reduce((sum, job) => sum + job.applications, 0);
 
+  const handleEditJob = (jobId: string) => {
+    // In a real app, this would open an edit modal or navigate to edit page
+    alert(`Editing job ${jobId}`);
+  };
+
+  const handleCloseJob = (jobId: string) => {
+    setMyJobs(prev => prev.map(job =>
+      job.id === jobId ? { ...job, status: 'closed' as const } : job
+    ));
+  };
+
+  const handleViewApplications = (jobId: string) => {
+    // In a real app, this would navigate to applications page for this job
+    alert(`Viewing applications for job ${jobId}`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl text-gray-900 mb-2">{mockEmployer.companyName}</h1>
-            <p className="text-gray-600">Manage your job postings and applications</p>
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onNavigate('home')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Go Back
+            </Button>
           </div>
-          <Button 
-            className="bg-blue-600 hover:bg-blue-700"
-            onClick={() => onNavigate('post-job')}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Post New Job
-          </Button>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl text-gray-900 mb-2">{mockEmployer.companyName}</h1>
+              <p className="text-gray-600">Manage your job postings and applications</p>
+            </div>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => onNavigate('post-job')}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Post New Job
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -144,8 +174,14 @@ export function EmployerDashboard({ onNavigate }: EmployerDashboardProps) {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm">Edit</Button>
-                            <Button variant="outline" size="sm">Close</Button>
+                            <Button variant="outline" size="sm" onClick={() => handleEditJob(job.id)}>
+                              <Edit className="w-4 h-4 mr-1" />
+                              Edit
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handleCloseJob(job.id)}>
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Close
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -195,7 +231,7 @@ export function EmployerDashboard({ onNavigate }: EmployerDashboardProps) {
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
-                              <Button variant="outline" size="sm">
+                              <Button variant="outline" size="sm" onClick={() => handleViewApplications(application.jobId)}>
                                 View Resume
                               </Button>
                               <Button variant="outline" size="sm">

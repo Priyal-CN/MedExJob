@@ -18,8 +18,12 @@ import { ApplicationTracking } from './components/ApplicationTracking';
 import { EmployerVerification } from './components/EmployerVerification';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { FraudProtection } from './components/FraudProtection';
+import { ProfilePage } from './components/ProfilePage';
+import { PrivacyPolicyPage } from './components/PrivacyPolicyPage';
+import { TermsConditionsPage } from './components/TermsConditionsPage';
+import { FAQPage } from './components/FAQPage';
 
-type Page = 'home' | 'jobs' | 'govt-jobs' | 'private-jobs' | 'job-detail' | 'about' | 'login' | 'register' | 'dashboard' | 'profile' | 'subscription' | 'post-job' | 'notifications' | 'job-alerts' | 'applications' | 'verification' | 'analytics' | 'fraud-protection';
+type Page = 'home' | 'jobs' | 'govt-jobs' | 'private-jobs' | 'job-detail' | 'about' | 'login' | 'register' | 'dashboard' | 'profile' | 'subscription' | 'post-job' | 'notifications' | 'job-alerts' | 'applications' | 'verification' | 'analytics' | 'fraud-protection' | 'privacy-policy' | 'terms-conditions' | 'faq';
 
 function AppContent() {
   const { user, logout, isAuthenticated } = useAuth();
@@ -91,6 +95,12 @@ function AppContent() {
       case 'subscription':
         return <SubscriptionPage onNavigate={handleNavigate} />;
       
+      case 'profile':
+        if (!isAuthenticated) {
+          return <AuthPage mode="login" onNavigate={handleNavigate} />;
+        }
+        return <ProfilePage onNavigate={handleNavigate} />;
+
       case 'post-job':
         if (!isAuthenticated || user?.role !== 'employer') {
           return <AuthPage mode="login" onNavigate={handleNavigate} />;
@@ -132,7 +142,16 @@ function AppContent() {
           return <AuthPage mode="login" onNavigate={handleNavigate} />;
         }
         return <FraudProtection userRole={user?.role || 'candidate'} userId={user?.id || 'current-user'} />;
-      
+
+      case 'privacy-policy':
+        return <PrivacyPolicyPage onNavigate={handleNavigate} />;
+
+      case 'terms-conditions':
+        return <TermsConditionsPage onNavigate={handleNavigate} />;
+
+      case 'faq':
+        return <FAQPage onNavigate={handleNavigate} />;
+
       default:
         return <HomePage onNavigate={handleNavigate} />;
     }

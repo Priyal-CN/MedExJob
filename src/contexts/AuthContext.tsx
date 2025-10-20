@@ -50,12 +50,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Login failed');
+        let message = 'Login failed';
+        try {
+          const errorData = await response.json();
+          // Support ProblemDetail (Spring) and our custom error shape
+          if (errorData.message) message = errorData.message;
+          else if (errorData.error) message = errorData.error;
+          else if (errorData.detail) message = errorData.detail;
+          else if (errorData.errors && typeof errorData.errors === 'object') {
+            const first = Object.values(errorData.errors)[0] as string | undefined;
+            if (first) message = first;
+          }
+        } catch {
+          const text = await response.text();
+          if (text) message = text;
+        }
+        throw new Error(message);
       }
 
       const data = await response.json();
