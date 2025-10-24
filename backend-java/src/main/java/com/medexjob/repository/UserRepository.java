@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
@@ -30,7 +31,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     
     @Query("SELECT u FROM User u WHERE u.role = :role AND u.isActive = true")
     java.util.List<User> findByRoleAndIsActiveTrue(@Param("role") User.UserRole role);
+
+    // Added to satisfy callers expecting a simple findByRole(User.UserRole)
+    List<User> findByRole(User.UserRole role);
 }
+
+
+
+
 
 
 

@@ -39,7 +39,7 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
     // Search jobs by title or description
     @Query("SELECT j FROM Job j WHERE (LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
            "OR LOWER(j.description) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-           "AND j.status = :status")
+           "AND (:status IS NULL OR j.status = :status)")
     Page<Job> searchJobs(@Param("keyword") String keyword, @Param("status") Job.JobStatus status, Pageable pageable);
     
     // Find jobs by multiple criteria
@@ -47,10 +47,16 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
            "(:sector IS NULL OR j.sector = :sector) AND " +
            "(:category IS NULL OR j.category = :category) AND " +
            "(:location IS NULL OR LOWER(j.location) LIKE LOWER(CONCAT('%', :location, '%'))) AND " +
-           "j.status = :status")
+           "(:experienceLevel IS NULL OR j.experienceLevel = :experienceLevel) AND " +
+           "(:speciality IS NULL OR LOWER(j.speciality) LIKE LOWER(CONCAT('%', :speciality, '%'))) AND " +
+           "(:dutyType IS NULL OR j.dutyType = :dutyType) AND " +
+           "(:status IS NULL OR j.status = :status)")
     Page<Job> findJobsByCriteria(@Param("sector") Job.JobSector sector,
                                  @Param("category") Job.JobCategory category,
                                  @Param("location") String location,
+                                 @Param("experienceLevel") Job.ExperienceLevel experienceLevel,
+                                 @Param("speciality") String speciality,
+                                 @Param("dutyType") Job.DutyType dutyType,
                                  @Param("status") Job.JobStatus status,
                                  Pageable pageable);
     
@@ -73,7 +79,19 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
     // Find jobs with most applications
     @Query("SELECT j FROM Job j WHERE j.status = :status ORDER BY j.applicationsCount DESC")
     Page<Job> findJobsWithMostApplications(@Param("status") Job.JobStatus status, Pageable pageable);
+
+    // Distinct categories (for meta)
+    @Query("SELECT DISTINCT j.category FROM Job j WHERE j.category IS NOT NULL")
+    List<Job.JobCategory> findDistinctCategories();
+
+    // Distinct locations (for meta)
+    @Query("SELECT DISTINCT j.location FROM Job j WHERE j.location IS NOT NULL AND j.location <> ''")
+    List<String> findDistinctLocations();
 }
+
+
+
+
 
 
 

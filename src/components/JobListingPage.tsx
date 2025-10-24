@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { JobCard } from './JobCard';
 import { FilterSidebar, FilterOptions } from './FilterSidebar';
-import { mockJobs } from '../data/mockData';
-import { Job } from '../types';
+import { fetchJobs, fetchJobsMeta } from '../api/jobs';
 
 interface JobListingPageProps {
   onNavigate: (page: string, jobId?: string) => void;
@@ -20,29 +19,59 @@ export function JobListingPage({ onNavigate, sector }: JobListingPageProps) {
     locations: [],
     featured: false
   });
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [metaCategories, setMetaCategories] = useState<string[]>([]);
+  const [metaLocations, setMetaLocations] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const filteredJobs = mockJobs.filter((job: Job) => {
-    // Search filter
-    const matchesSearch = !searchQuery || 
-      job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.organization.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.location.toLowerCase().includes(searchQuery.toLowerCase());
+  useEffect(() => {
+    // load meta on mount
+    (async () => {
+      try {
+        const meta = await fetchJobsMeta();
+        setMetaCategories(Array.isArray(meta?.categories) ? meta.categories : []);
+        setMetaLocations(Array.isArray(meta?.locations) ? meta.locations : []);
+      } catch {}
+    })();
+  }, []);
 
-    // Sector filter
-    const matchesSector = filters.sectors.length === 0 || filters.sectors.includes(job.sector);
+  useEffect(() => {
+    // fetch jobs on filters/search change
+    (async () => {
+      setLoading(true);
+      try {
+        const params: any = {
+          search: searchQuery || undefined,
+          sector: sector || filters.sectors[0], // Use sector prop if provided, otherwise use filter
+          category: filters.categories[0],
+          location: filters.locations[0],
+          featured: filters.featured || undefined,
+          status: 'active',
+          size: 50,
+        };
+        let res = await fetchJobs(params);
+        let content = res?.content || [];
+        let total = res?.totalElements || 0;
 
-    // Category filter
-    const matchesCategory = filters.categories.length === 0 || filters.categories.includes(job.category);
+        // Fallback: if no results with status filter, retry without it (handles backend variants)
+        if (content.length === 0) {
+          const { status, ...fallbackParams } = params;
+          res = await fetchJobs(fallbackParams);
+          content = res?.content || [];
+          total = res?.totalElements || 0;
+        }
 
-    // Location filter
-    const matchesLocation = filters.locations.length === 0 || 
-      filters.locations.some(loc => job.location.includes(loc));
-
-    // Featured filter
-    const matchesFeatured = !filters.featured || job.featured;
-
-    return matchesSearch && matchesSector && matchesCategory && matchesLocation && matchesFeatured;
-  });
+        setJobs(content);
+        setTotal(total);
+      } catch {
+        setJobs([]);
+        setTotal(0);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [searchQuery, filters, sector]);
 
   const title = sector === 'government' ? 'Government Jobs' : sector === 'private' ? 'Private Jobs' : 'All Jobs';
 
@@ -72,20 +101,20 @@ export function JobListingPage({ onNavigate, sector }: JobListingPageProps) {
         <div className="grid md:grid-cols-4 gap-6">
           {/* Filters Sidebar */}
           <div className="md:col-span-1">
-            <FilterSidebar onFilterChange={setFilters} />
+            <FilterSidebar onFilterChange={setFilters} categories={metaCategories} locations={metaLocations} />
           </div>
 
           {/* Job Listings */}
           <div className="md:col-span-3">
             <div className="mb-6">
               <p className="text-gray-600">
-                Showing {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''}
+                {loading ? 'Loading jobs…' : `Showing ${jobs.length} of ${total} job${total !== 1 ? 's' : ''}`}
               </p>
             </div>
 
             <div className="space-y-4">
-              {filteredJobs.length > 0 ? (
-                filteredJobs.map((job) => (
+              {jobs.length > 0 ? (
+                jobs.map((job: any) => (
                   <JobCard
                     key={job.id}
                     job={job}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, Users, Briefcase, Eye, MousePointer, Calendar, Download, Filter } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -6,66 +6,63 @@ import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { fetchAnalyticsOverview, fetchJobsByCategory, fetchJobsByLocation, fetchTopJobs } from '../api/analytics';
 
 interface AnalyticsDashboardProps {
   userRole: 'admin' | 'employer';
   userId?: string;
 }
 
-const mockJobViewsData = [
-  { month: 'Jan', views: 1200, applications: 45 },
-  { month: 'Feb', views: 1900, applications: 67 },
-  { month: 'Mar', views: 2100, applications: 89 },
-  { month: 'Apr', views: 1800, applications: 78 },
-  { month: 'May', views: 2500, applications: 112 },
-  { month: 'Jun', views: 2800, applications: 134 }
-];
-
-const mockCategoryData = [
-  { name: 'Medical Officer', value: 35, count: 45 },
-  { name: 'Specialist', value: 25, count: 32 },
-  { name: 'Senior Resident', value: 20, count: 28 },
-  { name: 'Junior Resident', value: 12, count: 15 },
-  { name: 'Nursing', value: 8, count: 10 }
-];
-
-const mockLocationData = [
-  { location: 'New Delhi', jobs: 45, applications: 234 },
-  { location: 'Mumbai', jobs: 38, applications: 189 },
-  { location: 'Bangalore', jobs: 32, applications: 156 },
-  { location: 'Chennai', jobs: 28, applications: 134 },
-  { location: 'Hyderabad', jobs: 25, applications: 112 }
-];
+// Data is fetched dynamically from backend analytics APIs
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 export function AnalyticsDashboard({ userRole, userId }: AnalyticsDashboardProps) {
   const [timeRange, setTimeRange] = useState('6months');
   const [selectedMetric, setSelectedMetric] = useState('views');
+  const [overview, setOverview] = useState<{ totalJobs: number; totalApplications: number; totalUsers: number; totalEmployers: number } | null>(null);
+  const [categoryData, setCategoryData] = useState<any[]>([]);
+  const [locationData, setLocationData] = useState<any[]>([]);
+  const [topJobs, setTopJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
   const isAdmin = userRole === 'admin';
 
-  // Mock data - in real app, this would come from API
-  const totalJobs = isAdmin ? 1247 : 12;
-  const totalApplications = isAdmin ? 8934 : 156;
-  const totalUsers = isAdmin ? 15432 : 0;
-  const totalEmployers = isAdmin ? 234 : 0;
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const [ov, cats, locs, tops] = await Promise.all([
+          fetchAnalyticsOverview(),
+          fetchJobsByCategory(),
+          fetchJobsByLocation(),
+          fetchTopJobs(),
+        ]);
+        setOverview(ov);
+        setCategoryData(Array.isArray(cats) ? cats : []);
+        setLocationData(Array.isArray(locs) ? locs : []);
+        setTopJobs(Array.isArray(tops) ? tops : []);
+      } catch (e) {
+        setOverview({ totalJobs: 0, totalApplications: 0, totalUsers: 0, totalEmployers: 0 });
+        setCategoryData([]);
+        setLocationData([]);
+        setTopJobs([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const totalJobs = isAdmin ? (overview?.totalJobs ?? 0) : undefined;
+  const totalApplications = isAdmin ? (overview?.totalApplications ?? 0) : undefined;
+  const totalUsers = isAdmin ? (overview?.totalUsers ?? 0) : undefined;
+  const totalEmployers = isAdmin ? (overview?.totalEmployers ?? 0) : undefined;
   const avgResponseTime = '2.3 days';
   const conversionRate = '12.5%';
 
-  const topPerformingJobs = [
-    { title: 'Senior Resident - Cardiology', views: 1245, applications: 87, conversion: 7.0 },
-    { title: 'Medical Officer - PHC', views: 2341, applications: 156, conversion: 6.7 },
-    { title: 'Consultant Neurologist', views: 876, applications: 34, conversion: 3.9 },
-    { title: 'Staff Nurse - ICU', views: 654, applications: 78, conversion: 11.9 }
-  ];
+  const topPerformingJobs = topJobs;
 
-  const recentActivity = [
-    { action: 'New job posted', user: 'Apollo Hospitals', time: '2 hours ago', type: 'job' },
-    { action: 'Application received', user: 'Dr. Priya Sharma', time: '4 hours ago', type: 'application' },
-    { action: 'Job approved', user: 'Fortis Healthcare', time: '6 hours ago', type: 'approval' },
-    { action: 'New employer registered', user: 'Max Healthcare', time: '1 day ago', type: 'registration' }
-  ];
+  const recentActivity: any[] = [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -109,7 +106,7 @@ export function AnalyticsDashboard({ userRole, userId }: AnalyticsDashboardProps
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500 mb-1">Total Jobs</p>
-                <p className="text-3xl text-gray-900">{totalJobs.toLocaleString()}</p>
+                <p className="text-3xl text-gray-900">{(totalJobs ?? 0).toLocaleString()}</p>
                 <div className="flex items-center mt-1">
                   <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
                   <span className="text-sm text-green-600">+12.5%</span>
@@ -125,7 +122,7 @@ export function AnalyticsDashboard({ userRole, userId }: AnalyticsDashboardProps
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500 mb-1">Total Applications</p>
-                <p className="text-3xl text-gray-900">{totalApplications.toLocaleString()}</p>
+                <p className="text-3xl text-gray-900">{(totalApplications ?? 0).toLocaleString()}</p>
                 <div className="flex items-center mt-1">
                   <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
                   <span className="text-sm text-green-600">+8.3%</span>
@@ -143,7 +140,7 @@ export function AnalyticsDashboard({ userRole, userId }: AnalyticsDashboardProps
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-500 mb-1">Total Users</p>
-                    <p className="text-3xl text-gray-900">{totalUsers.toLocaleString()}</p>
+                    <p className="text-3xl text-gray-900">{(totalUsers ?? 0).toLocaleString()}</p>
                     <div className="flex items-center mt-1">
                       <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
                       <span className="text-sm text-green-600">+15.2%</span>
@@ -159,7 +156,7 @@ export function AnalyticsDashboard({ userRole, userId }: AnalyticsDashboardProps
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-500 mb-1">Active Employers</p>
-                    <p className="text-3xl text-gray-900">{totalEmployers}</p>
+                    <p className="text-3xl text-gray-900">{(totalEmployers ?? 0)}</p>
                     <div className="flex items-center mt-1">
                       <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
                       <span className="text-sm text-green-600">+5.7%</span>
@@ -235,14 +232,15 @@ export function AnalyticsDashboard({ userRole, userId }: AnalyticsDashboardProps
                   </Select>
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={mockJobViewsData}>
+                  {/* Using jobs-by-location as dynamic series; X=location; Y=views/applications approximated */}
+                  <LineChart data={locationData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
+                    <XAxis dataKey="location" />
                     <YAxis />
                     <Tooltip />
                     <Line 
                       type="monotone" 
-                      dataKey={selectedMetric} 
+                      dataKey={selectedMetric === 'views' ? 'jobs' : 'applications'} 
                       stroke="#3B82F6" 
                       strokeWidth={2}
                       dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }}
@@ -257,7 +255,7 @@ export function AnalyticsDashboard({ userRole, userId }: AnalyticsDashboardProps
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={mockCategoryData}
+                      data={categoryData}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -266,7 +264,7 @@ export function AnalyticsDashboard({ userRole, userId }: AnalyticsDashboardProps
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {mockCategoryData.map((entry, index) => (
+                      {categoryData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -314,7 +312,7 @@ export function AnalyticsDashboard({ userRole, userId }: AnalyticsDashboardProps
               <Card className="p-6">
                 <h3 className="text-lg text-gray-900 mb-6">Jobs by Location</h3>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={mockLocationData}>
+                  <BarChart data={locationData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="location" />
                     <YAxis />
@@ -328,7 +326,7 @@ export function AnalyticsDashboard({ userRole, userId }: AnalyticsDashboardProps
               <Card className="p-6">
                 <h3 className="text-lg text-gray-900 mb-6">Applications by Location</h3>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={mockLocationData}>
+                  <BarChart data={locationData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="location" />
                     <YAxis />
@@ -346,12 +344,12 @@ export function AnalyticsDashboard({ userRole, userId }: AnalyticsDashboardProps
                 <Card className="p-6">
                   <h3 className="text-lg text-gray-900 mb-6">User Registration Trends</h3>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={mockJobViewsData}>
+                    <LineChart data={locationData}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
+                      <XAxis dataKey="location" />
                       <YAxis />
                       <Tooltip />
-                      <Line type="monotone" dataKey="views" stroke="#8B5CF6" strokeWidth={2} />
+                      <Line type="monotone" dataKey="jobs" stroke="#8B5CF6" strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>
                 </Card>

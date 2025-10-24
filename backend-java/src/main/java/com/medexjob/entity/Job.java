@@ -56,7 +56,18 @@ public class Job {
     @Size(max = 100)
     @Column(name = "experience", nullable = false)
     private String experience;
-    
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "experience_level")
+    private ExperienceLevel experienceLevel;
+
+    @Column(name = "speciality")
+    private String speciality;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "duty_type")
+    private DutyType dutyType;
+
     @Column(name = "number_of_posts", nullable = false)
     private Integer numberOfPosts = 1;
     
@@ -124,7 +135,7 @@ public class Job {
     // Constructors
     public Job() {}
     
-    public Job(Employer employer, String title, String description, JobSector sector, 
+    public Job(Employer employer, String title, String description, JobSector sector,
                JobCategory category, String location, String qualification, String experience) {
         this.employer = employer;
         this.title = title;
@@ -134,6 +145,22 @@ public class Job {
         this.location = location;
         this.qualification = qualification;
         this.experience = experience;
+    }
+
+    public Job(Employer employer, String title, String description, JobSector sector,
+               JobCategory category, String location, String qualification, String experience,
+               ExperienceLevel experienceLevel, String speciality, DutyType dutyType) {
+        this.employer = employer;
+        this.title = title;
+        this.description = description;
+        this.sector = sector;
+        this.category = category;
+        this.location = location;
+        this.qualification = qualification;
+        this.experience = experience;
+        this.experienceLevel = experienceLevel;
+        this.speciality = speciality;
+        this.dutyType = dutyType;
     }
     
     // Getters and Setters
@@ -204,11 +231,35 @@ public class Job {
     public String getExperience() {
         return experience;
     }
-    
+
     public void setExperience(String experience) {
         this.experience = experience;
     }
-    
+
+    public ExperienceLevel getExperienceLevel() {
+        return experienceLevel;
+    }
+
+    public void setExperienceLevel(ExperienceLevel experienceLevel) {
+        this.experienceLevel = experienceLevel;
+    }
+
+    public String getSpeciality() {
+        return speciality;
+    }
+
+    public void setSpeciality(String speciality) {
+        this.speciality = speciality;
+    }
+
+    public DutyType getDutyType() {
+        return dutyType;
+    }
+
+    public void setDutyType(DutyType dutyType) {
+        this.dutyType = dutyType;
+    }
+
     public Integer getNumberOfPosts() {
         return numberOfPosts;
     }
@@ -349,13 +400,21 @@ public class Job {
     public enum JobSector {
         GOVERNMENT, PRIVATE
     }
-    
+
     public enum JobCategory {
-        JUNIOR_RESIDENT, SENIOR_RESIDENT, MEDICAL_OFFICER, 
+        JUNIOR_RESIDENT, SENIOR_RESIDENT, MEDICAL_OFFICER,
         FACULTY, SPECIALIST, AYUSH, PARAMEDICAL_NURSING
     }
-    
+
     public enum JobStatus {
         ACTIVE, CLOSED, PENDING, DRAFT
+    }
+
+    public enum ExperienceLevel {
+        ENTRY, MID, SENIOR, EXECUTIVE
+    }
+
+    public enum DutyType {
+        FULL_TIME, PART_TIME, CONTRACT
     }
 }

@@ -14,6 +14,10 @@ interface JobCardProps {
 export function JobCard({ job, onViewDetails, onSaveJob, isSaved }: JobCardProps) {
   const isGovernment = job.sector === 'government';
   const daysLeft = Math.ceil((new Date(job.lastDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+  const locationText = job.location || [
+    (job as any).city,
+    (job as any).state
+  ].filter(Boolean).join(', ');
   
   return (
     <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer group">
@@ -70,7 +74,7 @@ export function JobCard({ job, onViewDetails, onSaveJob, isSaved }: JobCardProps
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="flex items-center gap-2 text-gray-600">
             <MapPin className="w-4 h-4" />
-            <span>{job.location}</span>
+            <span>{locationText || 'Location'}</span>
           </div>
           <div className="flex items-center gap-2 text-gray-600">
             <Briefcase className="w-4 h-4" />

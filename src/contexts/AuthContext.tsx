@@ -9,7 +9,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
+  token: string | null; // This is already here, just confirming it's part of the context
   login: (email: string, password: string) => Promise<User>;
   register: (userData: any) => Promise<void>;
   logout: () => void;
@@ -30,6 +30,8 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const API_BASE = (import.meta as any).env?.VITE_API_BASE || 'http://localhost:8081';
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -39,13 +41,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const storedUser = localStorage.getItem('user');
     if (storedToken && storedUser) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      try {
+        const parsed = JSON.parse(storedUser);
+        const normalized = parsed && typeof parsed === 'object'
+          ? { ...parsed, role: typeof parsed.role === 'string' ? parsed.role.toLowerCase() : parsed.role }
+          : parsed;
+        setUser(normalized);
+      } catch {
+        setUser(JSON.parse(storedUser));
+      }
     }
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
     try {
-      const response = await fetch('http://localhost:8080/api/auth/login', {
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -75,11 +85,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const data = await response.json();
       const { token: jwtToken, user: userData } = data;
 
+      const normalizedUser = userData && typeof userData === 'object'
+        ? { ...userData, role: typeof userData.role === 'string' ? userData.role.toLowerCase() : userData.role }
+        : userData;
+
       setToken(jwtToken);
-      setUser(userData);
+      setUser(normalizedUser);
       localStorage.setItem('token', jwtToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-      return userData;
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
+      return normalizedUser;
     } catch (error) {
       throw error;
     }
@@ -93,7 +107,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         role: userData.role.toUpperCase()
       };
 
-      const response = await fetch('http://localhost:8080/api/auth/register', {
+      const response = await fetch(`${API_BASE}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

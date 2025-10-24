@@ -11,8 +11,9 @@ import { Progress } from './ui/progress';
 import { JobCategory, JobSector } from '../types';
 
 interface JobPostingFormProps {
-  onNavigate: (page: string) => void;
-  onSave?: (jobData: any) => void;
+  onCancel: () => void; // Renamed for clarity when used in a dialog
+  onSave: (jobData: JobFormData) => void; // Made onSave required
+  initialData?: Partial<JobFormData>; // Added for editing
 }
 
 interface JobFormData {
@@ -23,6 +24,9 @@ interface JobFormData {
   location: string;
   qualification: string;
   experience: string;
+  experienceLevel: 'entry' | 'mid' | 'senior' | 'executive';
+  speciality: string;
+  dutyType: 'full_time' | 'part_time' | 'contract';
   numberOfPosts: number;
   salary: string;
   description: string;
@@ -31,9 +35,13 @@ interface JobFormData {
   benefits: string;
   contactEmail: string;
   contactPhone: string;
+  pdfUrl?: string;
+  applyLink?: string;
+  pdfFile?: File;
+  imageFile?: File;
 }
 
-export function JobPostingForm({ onNavigate, onSave }: JobPostingFormProps) {
+export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<JobFormData>({
     title: '',
@@ -43,6 +51,9 @@ export function JobPostingForm({ onNavigate, onSave }: JobPostingFormProps) {
     location: '',
     qualification: '',
     experience: '',
+    experienceLevel: 'entry',
+    speciality: '',
+    dutyType: 'full_time',
     numberOfPosts: 1,
     salary: '',
     description: '',
@@ -54,7 +65,7 @@ export function JobPostingForm({ onNavigate, onSave }: JobPostingFormProps) {
   });
 
   const totalSteps = 4;
-  const progress = (currentStep / totalSteps) * 100;
+  const progress = (currentStep / totalSteps) * 100; // Calculate progress based on current step
 
   const jobCategories: JobCategory[] = [
     'Junior Resident',
@@ -71,7 +82,14 @@ export function JobPostingForm({ onNavigate, onSave }: JobPostingFormProps) {
     'Jaipur', 'Chandigarh', 'Lucknow', 'Ahmedabad', 'Kochi', 'Bhubaneswar', 'Indore'
   ];
 
-  const handleInputChange = (field: keyof JobFormData, value: string | number) => {
+  // Initialize form data with initialData if provided (for editing)
+  useState(() => { // Use useState initializer for initial data
+    if (initialData) {
+      setFormData(prev => ({ ...prev, ...initialData }));
+    }
+  });
+
+  const handleInputChange = (field: keyof JobFormData, value: string | number | undefined) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -96,8 +114,6 @@ export function JobPostingForm({ onNavigate, onSave }: JobPostingFormProps) {
     if (onSave) {
       onSave(formData);
     }
-    alert('Job posted successfully! It will be reviewed by admin before going live.');
-    onNavigate('dashboard');
   };
 
   const isStepValid = (step: number) => {
@@ -147,7 +163,7 @@ export function JobPostingForm({ onNavigate, onSave }: JobPostingFormProps) {
 
         <div>
           <Label htmlFor="sector">Job Sector *</Label>
-          <Select value={formData.sector} onValueChange={(value) => handleInputChange('sector', value as JobSector)}>
+          <Select value={formData.sector} onValueChange={(value: JobSector) => handleInputChange('sector', value)}>
             <SelectTrigger className="mt-1">
               <SelectValue />
             </SelectTrigger>
@@ -160,7 +176,7 @@ export function JobPostingForm({ onNavigate, onSave }: JobPostingFormProps) {
 
         <div>
           <Label htmlFor="category">Job Category *</Label>
-          <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value as JobCategory)}>
+          <Select value={formData.category} onValueChange={(value: JobCategory) => handleInputChange('category', value)}>
             <SelectTrigger className="mt-1">
               <SelectValue />
             </SelectTrigger>
@@ -176,7 +192,7 @@ export function JobPostingForm({ onNavigate, onSave }: JobPostingFormProps) {
 
         <div className="md:col-span-2">
           <Label htmlFor="location">Location *</Label>
-          <Select value={formData.location} onValueChange={(value) => handleInputChange('location', value)}>
+          <Select value={formData.location} onValueChange={(value: string) => handleInputChange('location', value)}>
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Select location" />
             </SelectTrigger>
@@ -221,6 +237,46 @@ export function JobPostingForm({ onNavigate, onSave }: JobPostingFormProps) {
             onChange={(e) => handleInputChange('experience', e.target.value)}
             className="mt-1"
           />
+        </div>
+
+        <div>
+          <Label htmlFor="experienceLevel">Experience Level</Label>
+          <Select value={formData.experienceLevel} onValueChange={(value: 'entry' | 'mid' | 'senior' | 'executive') => handleInputChange('experienceLevel', value)}>
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select experience level" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="entry">Entry Level</SelectItem>
+              <SelectItem value="mid">Mid Level</SelectItem>
+              <SelectItem value="senior">Senior Level</SelectItem>
+              <SelectItem value="executive">Executive Level</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label htmlFor="speciality">Speciality</Label>
+          <Input
+            id="speciality"
+            placeholder="e.g., Cardiology, Neurology"
+            value={formData.speciality}
+            onChange={(e) => handleInputChange('speciality', e.target.value)}
+            className="mt-1"
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="dutyType">Duty Type</Label>
+          <Select value={formData.dutyType} onValueChange={(value: 'full_time' | 'part_time' | 'contract') => handleInputChange('dutyType', value)}>
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select duty type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="full_time">Full Time</SelectItem>
+              <SelectItem value="part_time">Part Time</SelectItem>
+              <SelectItem value="contract">Contract</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div>
@@ -340,6 +396,30 @@ export function JobPostingForm({ onNavigate, onSave }: JobPostingFormProps) {
             className="mt-1"
           />
         </div>
+
+        <div className="md:col-span-2">
+          <Label htmlFor="pdfFile">Upload PDF Document</Label>
+          <Input
+            id="pdfFile"
+            type="file"
+            accept=".pdf"
+            onChange={(e) => setFormData(prev => ({ ...prev, pdfFile: e.target.files?.[0] || undefined }))}
+            className="mt-1"
+          />
+          <p className="text-xs text-gray-500 mt-1">Upload official notification PDF or job description (optional)</p>
+        </div>
+
+        <div className="md:col-span-2">
+          <Label htmlFor="imageFile">Upload Image</Label>
+          <Input
+            id="imageFile"
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFormData(prev => ({ ...prev, imageFile: e.target.files?.[0] || undefined }))}
+            className="mt-1"
+          />
+          <p className="text-xs text-gray-500 mt-1">Upload hospital/organization image (optional)</p>
+        </div>
       </div>
 
       {/* Job Preview */}
@@ -423,7 +503,7 @@ export function JobPostingForm({ onNavigate, onSave }: JobPostingFormProps) {
             <h1 className="text-3xl text-gray-900 mb-2">Post a New Job</h1>
             <p className="text-gray-600">Create a compelling job posting to attract the best medical professionals</p>
           </div>
-          <Button variant="outline" onClick={() => onNavigate('dashboard')}>
+          <Button variant="outline" onClick={onCancel}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
           </Button>
@@ -455,7 +535,7 @@ export function JobPostingForm({ onNavigate, onSave }: JobPostingFormProps) {
           </Button>
 
           <div className="flex gap-3">
-            <Button variant="outline" onClick={() => onNavigate('dashboard')}>
+            <Button type="button" variant="outline" onClick={onCancel}> {/* Use onCancel for the 'Save as Draft' or 'Cancel' action */}
               <Save className="w-4 h-4 mr-2" />
               Save as Draft
             </Button>
@@ -484,5 +564,3 @@ export function JobPostingForm({ onNavigate, onSave }: JobPostingFormProps) {
     </div>
   );
 }
-
-

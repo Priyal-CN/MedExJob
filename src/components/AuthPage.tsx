@@ -15,7 +15,7 @@ interface AuthPageProps {
 
 export function AuthPage({ mode, onNavigate }: AuthPageProps) {
   const { login, register } = useAuth();
-  const [userRole, setUserRole] = useState<'candidate' | 'employer'>('candidate');
+  const [userRole, setUserRole] = useState<'candidate' | 'employer' | 'admin'>('candidate');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -41,8 +41,8 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
 
     try {
       const loggedInUser = await login(email, password);
-      // Use the role from the successful login response to navigate
-      onNavigate('dashboard', loggedInUser.role);
+      // Navigate to dashboard without role parameter
+      onNavigate('dashboard');
     } catch (err: any) {
       setErrors({ form: err.message || 'Login failed. Please check your credentials.' });
     } finally {
@@ -136,7 +136,7 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
 
               <div>
                 <Label>Login as</Label>
-                <RadioGroup value={userRole} onValueChange={(value) => setUserRole(value as 'candidate' | 'employer')} className="mt-2">
+                <RadioGroup value={userRole} onValueChange={(value) => setUserRole(value as 'candidate' | 'employer' | 'admin')} className="mt-2">
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="candidate" id="candidate-login" />
                     <Label htmlFor="candidate-login" className="cursor-pointer">Candidate</Label>
@@ -144,6 +144,10 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="employer" id="employer-login" />
                     <Label htmlFor="employer-login" className="cursor-pointer">Employer</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="admin" id="admin-login" />
+                    <Label htmlFor="admin-login" className="cursor-pointer">Admin</Label>
                   </div>
                 </RadioGroup>
               </div>
@@ -165,7 +169,7 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
             <form onSubmit={handleRegister} className="space-y-4">
               <div>
                 <Label>I want to register as</Label>
-                <RadioGroup value={userRole} onValueChange={(value) => setUserRole(value as 'candidate' | 'employer')} className="mt-2">
+                <RadioGroup value={userRole} onValueChange={(value) => setUserRole(value as 'candidate' | 'employer' | 'admin')} className="mt-2">
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="candidate" id="candidate-register" />
                     <Label htmlFor="candidate-register" className="cursor-pointer">
@@ -176,6 +180,12 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
                     <RadioGroupItem value="employer" id="employer-register" />
                     <Label htmlFor="employer-register" className="cursor-pointer">
                       Employer (Hospital/Consultancy)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="admin" id="admin-register" />
+                    <Label htmlFor="admin-register" className="cursor-pointer">
+                      Admin
                     </Label>
                   </div>
                 </RadioGroup>

@@ -1,23 +1,22 @@
 import { Bell, User, Menu, Briefcase } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from './ui/dropdown-menu';
 
 interface HeaderProps {
   currentPage: string;
   onNavigate: (page: string) => void;
   isAuthenticated: boolean;
-  userRole?: 'admin' | 'employer' | 'candidate';
+  userRole?: 'admin' | 'employer' | 'candidate' | string;
 }
 
+import { useAuth } from '../contexts/AuthContext';
+import { mockNotifications } from '../data/mockData';
+
 export function Header({ currentPage, onNavigate, isAuthenticated, userRole }: HeaderProps) {
+  const { user } = useAuth();
+  const unreadCount = isAuthenticated && user
+    ? mockNotifications.filter(n => n.userId === user.id && !n.read).length
+    : 0;
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white">
       <div className="container mx-auto px-4">
@@ -89,9 +88,11 @@ export function Header({ currentPage, onNavigate, isAuthenticated, userRole }: H
                   onClick={() => onNavigate('notifications')}
                 >
                   <Bell className="w-5 h-5" />
-                  <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center bg-red-500">
-                    3
-                  </Badge>
+                  {unreadCount > 0 && (
+                    <Badge className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 p-0 flex items-center justify-center bg-red-500">
+                      {unreadCount}
+                    </Badge>
+                  )}
                 </Button>
 
                 {/* Profile Icon - Navigate to Dashboard */}

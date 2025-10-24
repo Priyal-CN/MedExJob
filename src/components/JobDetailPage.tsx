@@ -1,21 +1,78 @@
-import { MapPin, Briefcase, Calendar, Building2, GraduationCap, DollarSign, FileText, ExternalLink, Clock, Eye } from 'lucide-react';
+import { MapPin, Briefcase, Calendar, Building2, GraduationCap, DollarSign, FileText, ExternalLink, Clock, Eye, User, Mail, Phone, Upload } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { Alert, AlertDescription } from './ui/alert';
-import { mockJobs } from '../data/mockData';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from './ui/dialog';
+import { useEffect, useState } from 'react';
+import { fetchJob } from '../api/jobs';
+import { useParams } from 'react-router-dom';
+import { applyForJob } from '../api/applications';
+import { useAuth } from '../contexts/AuthContext';
 
 interface JobDetailPageProps {
-  jobId: string;
   onNavigate: (page: string) => void;
-  isAuthenticated: boolean;
+  showApplyDialog?: boolean;
 }
 
-export function JobDetailPage({ jobId, onNavigate, isAuthenticated }: JobDetailPageProps) {
-  const job = mockJobs.find(j => j.id === jobId);
+export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDialog = false }: JobDetailPageProps) {
+  const { isAuthenticated, user, token } = useAuth();
+  const [job, setJob] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [showApplyDialog, setShowApplyDialog] = useState(initialShowApplyDialog);
+  const [applicationForm, setApplicationForm] = useState({
+    candidateName: '',
+    candidateEmail: '',
+    candidatePhone: '',
+    resume: null as File | null,
+    notes: ''
+  });
+  const [applying, setApplying] = useState(false);
+  const locationText = job?.location || [job?.city, job?.state].filter(Boolean).join(', ');
+  const { jobId } = useParams<{ jobId: string }>();
 
-  if (!job) {
+  useEffect(() => {
+    (async () => {
+      if (!jobId) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const data = await fetchJob(jobId);
+        setJob(data);
+        setNotFound(false);
+      } catch (e) {
+        setNotFound(true);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [jobId]);
+
+  useEffect(() => {
+    // Pre-fill form if user is logged in
+    if (user) {
+      setApplicationForm(prev => ({ ...prev, candidateName: user.name, candidateEmail: user.email }));
+    }
+  }, [user, showApplyDialog]);
+
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-600">Loading job…</div>
+      </div>
+    );
+  }
+
+  if (notFound || !job) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -28,14 +85,37 @@ export function JobDetailPage({ jobId, onNavigate, isAuthenticated }: JobDetailP
   }
 
   const isGovernment = job.sector === 'government';
-  const daysLeft = Math.ceil((new Date(job.lastDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+  const daysLeft = job.lastDate ? Math.ceil((new Date(job.lastDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
-  const handleApply = () => {
-    if (!isAuthenticated) {
-      onNavigate('login');
-    } else {
-      // In a real app, this would submit the application
+  const handleApplicationSubmit = async () => {
+    if (!job || !token) return;
+
+    setApplying(true);
+    try {
+      await applyForJob({
+        jobId: job.id,
+        candidateName: applicationForm.candidateName,
+        candidateEmail: applicationForm.candidateEmail,
+        candidatePhone: applicationForm.candidatePhone,
+        resume: applicationForm.resume || undefined,
+        notes: applicationForm.notes || undefined,
+        token: token
+      });
+
       alert('Application submitted successfully!');
+      setShowApplyDialog(false);
+      setApplicationForm({
+        candidateName: '',
+        candidateEmail: '',
+        candidatePhone: '',
+        resume: null,
+        notes: ''
+      });
+    } catch (error) {
+      alert('Failed to submit application. Please try again.');
+      console.error('Application error:', error);
+    } finally {
+      setApplying(false);
     }
   };
 
@@ -86,7 +166,7 @@ export function JobDetailPage({ jobId, onNavigate, isAuthenticated }: JobDetailP
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
-                    <span>Posted {new Date(job.postedDate).toLocaleDateString('en-IN')}</span>
+                    {job.postedDate && <span>Posted {new Date(job.postedDate).toLocaleDateString('en-IN')}</span>}
                   </div>
                 </div>
               </div>
@@ -100,7 +180,7 @@ export function JobDetailPage({ jobId, onNavigate, isAuthenticated }: JobDetailP
                   <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>
                     <p className="text-sm text-gray-500">Location</p>
-                    <p className="text-gray-900">{job.location}</p>
+                    <p className="text-gray-900">{locationText || 'Location'}</p>
                   </div>
                 </div>
 
@@ -166,6 +246,14 @@ export function JobDetailPage({ jobId, onNavigate, isAuthenticated }: JobDetailP
                       <ExternalLink className="w-4 h-4 ml-auto" />
                     </a>
                   </Button>
+                  <div className="mt-4">
+                    <div className="text-sm text-gray-600 mb-2">Inline Preview</div>
+                    <div className="border rounded overflow-hidden">
+                      <object data={job.pdfUrl} type="application/pdf" width="100%" height="600px">
+                        <iframe src={job.pdfUrl} title="PDF Preview" width="100%" height="600px" />
+                      </object>
+                    </div>
+                  </div>
                   {job.applyLink && (
                     <Button variant="outline" className="w-full justify-start" asChild>
                       <a href={job.applyLink} target="_blank" rel="noopener noreferrer">
@@ -203,13 +291,104 @@ export function JobDetailPage({ jobId, onNavigate, isAuthenticated }: JobDetailP
                 {isGovernment ? (
                   <div className="space-y-3">
                     <p className="text-sm text-gray-600">
-                      This is a government job. Please visit the official website to apply.
+                      Apply directly through our platform or visit the official website.
                     </p>
+                    {isAuthenticated ? (
+                      <Dialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
+                        <DialogTrigger asChild>
+                          <Button className="w-full bg-green-600 hover:bg-green-700">
+                            Apply Now
+                          </Button>
+                        </DialogTrigger>
+                      <DialogContent className="sm:max-w-[500px]">
+                        <DialogHeader>
+                          <DialogTitle>Apply for {job.title}</DialogTitle>
+                          <DialogDescription>
+                            Fill out the form below to submit your application for this position.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="candidateName">Full Name *</Label>
+                            <Input
+                              id="candidateName"
+                              value={applicationForm.candidateName}
+                              onChange={(e) => setApplicationForm(prev => ({ ...prev, candidateName: e.target.value }))}
+                              placeholder="Enter your full name"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="candidateEmail">Email Address *</Label>
+                            <Input
+                              id="candidateEmail"
+                              type="email"
+                              value={applicationForm.candidateEmail}
+                              onChange={(e) => setApplicationForm(prev => ({ ...prev, candidateEmail: e.target.value }))}
+                              placeholder="Enter your email"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="candidatePhone">Phone Number *</Label>
+                            <Input
+                              id="candidatePhone"
+                              value={applicationForm.candidatePhone}
+                              onChange={(e) => setApplicationForm(prev => ({ ...prev, candidatePhone: e.target.value }))}
+                              placeholder="Enter your phone number"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="resume">Resume/CV</Label>
+                            <Input
+                              id="resume"
+                              type="file"
+                              accept=".pdf,.doc,.docx"
+                              onChange={(e) => setApplicationForm(prev => ({ ...prev, resume: e.target.files?.[0] || null }))}
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Upload PDF, DOC, or DOCX (max 10MB)</p>
+                          </div>
+                          <div>
+                            <Label htmlFor="notes">Additional Notes</Label>
+                            <Textarea
+                              id="notes"
+                              value={applicationForm.notes}
+                              onChange={(e) => setApplicationForm(prev => ({ ...prev, notes: e.target.value }))}
+                              placeholder="Any additional information you'd like to share..."
+                              rows={3}
+                            />
+                          </div>
+                          <div className="flex gap-3 pt-4">
+                            <Button
+                              variant="outline"
+                              onClick={() => setShowApplyDialog(false)}
+                              className="flex-1"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              onClick={handleApplicationSubmit}
+                              disabled={applying || !applicationForm.candidateName || !applicationForm.candidateEmail || !applicationForm.candidatePhone}
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                            >
+                              {applying ? 'Submitting...' : 'Submit Application'}
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                      </Dialog>
+                    ) : (
+                      <div className="space-y-3">
+                        <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => onNavigate('login')}>
+                          Login to Apply
+                        </Button>
+                        <p className="text-xs text-center text-gray-500">Please login to submit your application.</p>
+                      </div>
+                    )}
                     {job.applyLink && (
-                      <Button className="w-full bg-blue-600 hover:bg-blue-700" asChild>
+                      <Button variant="outline" className="w-full" asChild>
                         <a href={job.applyLink} target="_blank" rel="noopener noreferrer">
-                          Apply on Official Website
-                          <ExternalLink className="w-4 h-4 ml-2" />
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          Official Apply Link
+                          <ExternalLink className="w-4 h-4 ml-auto" />
                         </a>
                       </Button>
                     )}
@@ -227,16 +406,95 @@ export function JobDetailPage({ jobId, onNavigate, isAuthenticated }: JobDetailP
                     <p className="text-sm text-gray-600">
                       Apply directly through our platform. Your profile and resume will be shared with the employer.
                     </p>
-                    <Button 
-                      className="w-full bg-green-600 hover:bg-green-700"
-                      onClick={handleApply}
-                    >
-                      Apply Now
-                    </Button>
-                    {!isAuthenticated && (
-                      <p className="text-xs text-center text-gray-500">
-                        You need to login to apply for this job
-                      </p>
+                    {isAuthenticated ? (
+                      <Dialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
+                        <DialogTrigger asChild>
+                          <Button className="w-full bg-green-600 hover:bg-green-700">
+                            Apply Now
+                          </Button>
+                        </DialogTrigger>
+                      <DialogContent className="sm:max-w-[500px]">
+                        <DialogHeader>
+                          <DialogTitle>Apply for {job.title}</DialogTitle>
+                          <DialogDescription>
+                            Fill out the form below to submit your application for this position.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="candidateName">Full Name *</Label>
+                            <Input
+                              id="candidateName"
+                              value={applicationForm.candidateName}
+                              onChange={(e) => setApplicationForm(prev => ({ ...prev, candidateName: e.target.value }))}
+                              placeholder="Enter your full name"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="candidateEmail">Email Address *</Label>
+                            <Input
+                              id="candidateEmail"
+                              type="email"
+                              value={applicationForm.candidateEmail}
+                              onChange={(e) => setApplicationForm(prev => ({ ...prev, candidateEmail: e.target.value }))}
+                              placeholder="Enter your email"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="candidatePhone">Phone Number *</Label>
+                            <Input
+                              id="candidatePhone"
+                              value={applicationForm.candidatePhone}
+                              onChange={(e) => setApplicationForm(prev => ({ ...prev, candidatePhone: e.target.value }))}
+                              placeholder="Enter your phone number"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="resume">Resume/CV</Label>
+                            <Input
+                              id="resume"
+                              type="file"
+                              accept=".pdf,.doc,.docx"
+                              onChange={(e) => setApplicationForm(prev => ({ ...prev, resume: e.target.files?.[0] || null }))}
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Upload PDF, DOC, or DOCX (max 10MB)</p>
+                          </div>
+                          <div>
+                            <Label htmlFor="notes">Additional Notes</Label>
+                            <Textarea
+                              id="notes"
+                              value={applicationForm.notes}
+                              onChange={(e) => setApplicationForm(prev => ({ ...prev, notes: e.target.value }))}
+                              placeholder="Any additional information you'd like to share..."
+                              rows={3}
+                            />
+                          </div>
+                          <div className="flex gap-3 pt-4">
+                            <Button
+                              variant="outline"
+                              onClick={() => setShowApplyDialog(false)}
+                              className="flex-1"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              onClick={handleApplicationSubmit}
+                              disabled={applying || !applicationForm.candidateName || !applicationForm.candidateEmail || !applicationForm.candidatePhone}
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                            >
+                              {applying ? 'Submitting...' : 'Submit Application'}
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                      </Dialog>
+                    ) : (
+                      <div className="space-y-3">
+                        <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => onNavigate('login')}>
+                          Login to Apply
+                        </Button>
+                        <p className="text-xs text-center text-gray-500">Please login to submit your application.</p>
+                      </div>
                     )}
                   </div>
                 )}

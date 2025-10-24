@@ -23,8 +23,10 @@ export function NotificationCenter({ userId, userRole }: NotificationCenterProps
   const [pushNotifications, setPushNotifications] = useState(true);
 
   useEffect(() => {
-    // Filter notifications for current user
-    const userNotifications = mockNotifications.filter(n => n.userId === userId);
+    // If admin, show all notifications. Otherwise, filter for the current user.
+    const userNotifications = userRole === 'admin'
+      ? mockNotifications
+      : mockNotifications.filter(n => n.userId === userId);
     setNotifications(userNotifications);
   }, [userId]);
 
@@ -366,5 +368,3 @@ export function NotificationCenter({ userId, userRole }: NotificationCenterProps
     </div>
   );
 }
-
-

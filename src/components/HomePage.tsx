@@ -6,7 +6,7 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { JobCard } from './JobCard';
-import { mockJobs } from '../data/mockData';
+import { fetchJobs, fetchJobsMeta } from '../api/jobs';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
 interface HomePageProps {
@@ -57,32 +57,45 @@ function StatCard({ icon: Icon, end, label, suffix = '' }: { icon: any, end: num
 export function HomePage({ onNavigate }: HomePageProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
-  
-  const featuredJobs = mockJobs.filter(job => job.featured).slice(0, 4);
-  const governmentJobs = mockJobs.filter(job => job.sector === 'government').slice(0, 3);
-  const privateJobs = mockJobs.filter(job => job.sector === 'private').slice(0, 3);
+  const [featuredJobs, setFeaturedJobs] = useState<any[]>([]);
+  const [governmentJobs, setGovernmentJobs] = useState<any[]>([]);
+  const [privateJobs, setPrivateJobs] = useState<any[]>([]);
+  const [locations, setLocations] = useState<string[]>([]);
+  const [categories, setCategories] = useState<{ name: string; icon: string; color: string }[]>([]);
 
-  const locations = [
-    'All Locations',
-    'New Delhi',
-    'Mumbai',
-    'Bangalore',
-    'Chennai',
-    'Kolkata',
-    'Hyderabad',
-    'Pune',
-    'Jaipur',
-    'Chandigarh',
-    'Lucknow'
-  ];
-
-  const categories = [
-    { name: 'Junior Resident', icon: '👨‍⚕️', color: 'from-blue-500 to-blue-600' },
-    { name: 'Senior Resident', icon: '👩‍⚕️', color: 'from-green-500 to-green-600' },
-    { name: 'Medical Officer', icon: '⚕️', color: 'from-purple-500 to-purple-600' },
-    { name: 'Specialist', icon: '🏥', color: 'from-red-500 to-red-600' },
-    { name: 'Nursing', icon: '👩‍⚕️', color: 'from-pink-500 to-pink-600' }
-  ];
+  useEffect(() => {
+    // Load featured, government, private jobs
+    (async () => {
+      try {
+        const [feat, gov, priv, meta] = await Promise.all([
+          fetchJobs({ featured: true, size: 4 }).then(r => r.content ?? r.content),
+          fetchJobs({ sector: 'government', size: 3 }).then(r => r.content ?? r.content),
+          fetchJobs({ sector: 'private', size: 3 }).then(r => r.content ?? r.content),
+          fetchJobsMeta(),
+        ]);
+        setFeaturedJobs(feat || []);
+        setGovernmentJobs(gov || []);
+        setPrivateJobs(priv || []);
+        const locs: string[] = Array.isArray(meta?.locations) ? meta.locations : [];
+        setLocations(locs);
+        const cats: string[] = Array.isArray(meta?.categories) ? meta.categories : [];
+        setCategories(
+          cats.map((c, i) => ({
+            name: c,
+            icon: ['👨‍⚕️','👩‍⚕️','⚕️','🏥','🩺','🌿','🧑‍⚕️'][i % 7],
+            color: ['from-blue-500 to-blue-600','from-green-500 to-green-600','from-purple-500 to-purple-600','from-red-500 to-red-600','from-pink-500 to-pink-600','from-emerald-500 to-emerald-600','from-indigo-500 to-indigo-600'][i % 7]
+          }))
+        );
+      } catch (e) {
+        // silent fail for homepage
+        setFeaturedJobs([]);
+        setGovernmentJobs([]);
+        setPrivateJobs([]);
+        setLocations([]);
+        setCategories([]);
+      }
+    })();
+  }, []);
 
   const handleSearch = () => {
     onNavigate('jobs');
@@ -407,7 +420,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
         </div>
       </section>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fade-in {
           from { opacity: 0; }
           to { opacity: 1; }

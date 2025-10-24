@@ -1,188 +1,129 @@
-import { useState } from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from './contexts/AuthContext';
+
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { HomePage } from './components/HomePage';
+import { AuthPage } from './components/AuthPage';
 import { JobListingPage } from './components/JobListingPage';
 import { JobDetailPage } from './components/JobDetailPage';
-import { AuthPage } from './components/AuthPage';
 import { CandidateDashboard } from './components/CandidateDashboard';
 import { EmployerDashboard } from './components/EmployerDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
-import { AboutPage } from './components/AboutPage';
-import { SubscriptionPage } from './components/SubscriptionPage';
-import { JobPostingForm } from './components/JobPostingForm';
-import { NotificationCenter } from './components/NotificationCenter';
-import { JobAlerts } from './components/JobAlerts';
-import { ApplicationTracking } from './components/ApplicationTracking';
-import { EmployerVerification } from './components/EmployerVerification';
-import { AnalyticsDashboard } from './components/AnalyticsDashboard';
-import { FraudProtection } from './components/FraudProtection';
 import { ProfilePage } from './components/ProfilePage';
+import { AboutPage } from './components/AboutPage';
+import { FAQPage } from './components/FAQPage';
 import { PrivacyPolicyPage } from './components/PrivacyPolicyPage';
 import { TermsConditionsPage } from './components/TermsConditionsPage';
-import { FAQPage } from './components/FAQPage';
-
-type Page = 'home' | 'jobs' | 'govt-jobs' | 'private-jobs' | 'job-detail' | 'about' | 'login' | 'register' | 'dashboard' | 'profile' | 'subscription' | 'post-job' | 'notifications' | 'job-alerts' | 'applications' | 'verification' | 'analytics' | 'fraud-protection' | 'privacy-policy' | 'terms-conditions' | 'faq';
+import { AdminJobManagementPage } from './components/AdminJobManagementPage';
+import { JobPostingForm } from './components/JobPostingForm';
+import { AdminUsersPage } from './components/AdminUsersPage';
+import { EmployerVerificationPage } from './components/EmployerVerificationPage';
+import { AdminApplications } from './components/AdminApplications';
+import { AnalyticsDashboard } from './components/AnalyticsDashboard';
+import { NotificationCenter } from './components/NotificationCenter';
+import { SubscriptionPage } from './components/SubscriptionPage';
+import { EmployerVerification } from './components/EmployerVerification';
 
 function AppContent() {
-  const { user, logout, isAuthenticated } = useAuth();
-  const [currentPage, setCurrentPage] = useState<Page>('home');
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, user, logout } = useAuth();
+  const [currentPage, setCurrentPage] = useState(location.pathname.substring(1) || 'home');
 
-  const handleNavigate = (page: string, param?: string) => {
-    setCurrentPage(page as Page);
+  useEffect(() => {
+    setCurrentPage(location.pathname.substring(1) || 'home');
+  }, [location]);
 
-    if (page === 'job-detail' && param) {
-      setSelectedJobId(param);
-    }
-
-    if (page === 'login' || page === 'register') {
+  const handleNavigate = (page: string, entityId?: string) => {
+    if (page === 'logout') {
       logout();
+      navigate('/login');
+      return;
     }
-
-    // Scroll to top on navigation
-    window.scrollTo(0, 0);
+    // Handle dashboard navigation based on user role - ignore entityId for dashboard
+    if (page === 'dashboard') {
+      if (!isAuthenticated || !user) {
+        navigate('/login');
+        return;
+      }
+      // Navigate to role-specific dashboard
+      if (user.role === 'admin') {
+        navigate('/dashboard/admin');
+      } else if (user.role === 'employer') {
+        navigate('/dashboard/employer');
+      } else if (user.role === 'candidate') {
+        navigate('/dashboard/candidate');
+      } else {
+        navigate('/dashboard/candidate'); // Default fallback
+      }
+      return;
+    }
+    const path = entityId ? `/${page}/${entityId}` : `/${page}`;
+    navigate(path);
   };
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'home':
-        return <HomePage onNavigate={handleNavigate} />;
-      
-      case 'jobs':
-        return <JobListingPage onNavigate={handleNavigate} />;
-      
-      case 'govt-jobs':
-        return <JobListingPage onNavigate={handleNavigate} sector="government" />;
-      
-      case 'private-jobs':
-        return <JobListingPage onNavigate={handleNavigate} sector="private" />;
-      
-      case 'job-detail':
-        return selectedJobId ? (
-          <JobDetailPage 
-            jobId={selectedJobId} 
-            onNavigate={handleNavigate}
-            isAuthenticated={isAuthenticated}
-          />
-        ) : (
-          <HomePage onNavigate={handleNavigate} />
-        );
-      
-      case 'login':
-        return <AuthPage mode="login" onNavigate={handleNavigate} />;
-      
-      case 'register':
-        return <AuthPage mode="register" onNavigate={handleNavigate} />;
-      
-      case 'dashboard':
-        if (!isAuthenticated) {
-          return <AuthPage mode="login" onNavigate={handleNavigate} />;
-        }
-
-        if (user?.role === 'admin') {
-          return <AdminDashboard onNavigate={handleNavigate} />;
-        } else if (user?.role === 'employer') {
-          return <EmployerDashboard onNavigate={handleNavigate} />;
-        } else {
-          return <CandidateDashboard onNavigate={handleNavigate} />;
-        }
-      
-      case 'about':
-        return <AboutPage onNavigate={handleNavigate} />;
-      
-      case 'subscription':
-        return <SubscriptionPage onNavigate={handleNavigate} />;
-      
-      case 'profile':
-        if (!isAuthenticated) {
-          return <AuthPage mode="login" onNavigate={handleNavigate} />;
-        }
-        return <ProfilePage onNavigate={handleNavigate} />;
-
-      case 'post-job':
-        if (!isAuthenticated || user?.role !== 'employer') {
-          return <AuthPage mode="login" onNavigate={handleNavigate} />;
-        }
-        return <JobPostingForm onNavigate={handleNavigate} />;
-
-      case 'notifications':
-        if (!isAuthenticated) {
-          return <AuthPage mode="login" onNavigate={handleNavigate} />;
-        }
-        return <NotificationCenter userId={user?.id || 'current-user'} userRole={user?.role || 'candidate'} />;
-
-      case 'job-alerts':
-        if (!isAuthenticated || user?.role !== 'candidate') {
-          return <AuthPage mode="login" onNavigate={handleNavigate} />;
-        }
-        return <JobAlerts />;
-
-      case 'applications':
-        if (!isAuthenticated) {
-          return <AuthPage mode="login" onNavigate={handleNavigate} />;
-        }
-        return <ApplicationTracking userRole={user?.role || 'candidate'} userId={user?.id || 'current-user'} />;
-
-      case 'verification':
-        if (!isAuthenticated || user?.role !== 'employer') {
-          return <AuthPage mode="login" onNavigate={handleNavigate} />;
-        }
-        return <EmployerVerification onNavigate={handleNavigate} />;
-
-      case 'analytics':
-        if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'employer')) {
-          return <AuthPage mode="login" onNavigate={handleNavigate} />;
-        }
-        return <AnalyticsDashboard userRole={user?.role || 'employer'} userId={user?.id || 'current-user'} />;
-
-      case 'fraud-protection':
-        if (!isAuthenticated) {
-          return <AuthPage mode="login" onNavigate={handleNavigate} />;
-        }
-        return <FraudProtection userRole={user?.role || 'candidate'} userId={user?.id || 'current-user'} />;
-
-      case 'privacy-policy':
-        return <PrivacyPolicyPage onNavigate={handleNavigate} />;
-
-      case 'terms-conditions':
-        return <TermsConditionsPage onNavigate={handleNavigate} />;
-
-      case 'faq':
-        return <FAQPage onNavigate={handleNavigate} />;
-
-      default:
-        return <HomePage onNavigate={handleNavigate} />;
-    }
-  };
-
-  const showHeaderFooter = currentPage !== 'login' && currentPage !== 'register';
+  const getDashboard = () => {
+    if (!isAuthenticated || !user) return <AuthPage mode="login" onNavigate={handleNavigate} />;    
+    if (user.role === 'admin') return <AdminDashboard onNavigate={handleNavigate} />;    
+    if (user.role === 'employer') return <EmployerVerification onNavigate={handleNavigate} />; // Employers land on verification first
+    return <CandidateDashboard onNavigate={handleNavigate} />;    
+  }  
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {showHeaderFooter && (
-        <Header
-          currentPage={currentPage}
-          onNavigate={handleNavigate}
-          isAuthenticated={isAuthenticated}
-          userRole={user?.role || undefined}
-        />
-      )}
+    <>
+      <Header currentPage={currentPage} onNavigate={handleNavigate} isAuthenticated={isAuthenticated} userRole={user?.role} />
+      <main>
+        <Routes>
+          <Route path="/" element={<HomePage onNavigate={handleNavigate} />} />
+          <Route path="/home" element={<HomePage onNavigate={handleNavigate} />} />
+          <Route path="/login" element={<AuthPage mode="login" onNavigate={handleNavigate} />} />
+          <Route path="/register" element={<AuthPage mode="register" onNavigate={handleNavigate} />} />
+          <Route path="/jobs" element={<JobListingPage onNavigate={handleNavigate} />} />
+          <Route path="/govt-jobs" element={<JobListingPage onNavigate={handleNavigate} sector="government" />} />
+          <Route path="/private-jobs" element={<JobListingPage onNavigate={handleNavigate} sector="private" />} />
+          <Route path="/job-detail/:jobId" element={<JobDetailPage onNavigate={handleNavigate} />} />
+          <Route path="/about" element={<AboutPage onNavigate={handleNavigate} />} />
+          <Route path="/faq" element={<FAQPage onNavigate={handleNavigate} />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage onNavigate={handleNavigate} />} />
+          <Route path="/terms-conditions" element={<TermsConditionsPage onNavigate={handleNavigate} />} />
+          <Route path="/subscription" element={<SubscriptionPage onNavigate={handleNavigate} />} />
 
-      <main className="flex-1">
-        {renderPage()}
+          {/* Authenticated Routes */}
+          {isAuthenticated && user && (
+            <>
+              {/* Generic dashboard route, redirects based on role */}
+              <Route path="/dashboard" element={getDashboard()} />
+
+              {/* Role-specific dashboard routes */}
+              <Route path="/dashboard/candidate" element={<CandidateDashboard onNavigate={handleNavigate} />} />
+              <Route path="/dashboard/employer" element={<EmployerDashboard onNavigate={handleNavigate} />} />
+              <Route path="/notifications" element={<NotificationCenter userId={user.id} userRole={user.role} />} />
+              <Route path="/verification" element={<EmployerVerification onNavigate={handleNavigate} />} />
+
+              {/* Admin Routes */}
+              <Route path="/dashboard/admin" element={<AdminDashboard onNavigate={handleNavigate} />} />
+              <Route path="/admin-jobs" element={<AdminJobManagementPage onNavigate={handleNavigate} />} />
+              <Route path="/admin-post-job" element={<JobPostingForm onCancel={() => handleNavigate('admin-jobs')} onSave={() => {}} />} />
+              <Route path="/profile" element={<ProfilePage onNavigate={handleNavigate} />} />
+              <Route path="/admin-users" element={<AdminUsersPage onNavigate={handleNavigate} />} />
+              <Route path="/admin-employer-verification" element={<EmployerVerificationPage onNavigate={handleNavigate} />} />
+              <Route path="/admin-applications" element={<AdminApplications onNavigate={handleNavigate} />} />
+              <Route path="/analytics" element={<AnalyticsDashboard userRole={user.role} userId={user.id} />} />
+            </>
+          )}
+        </Routes>
       </main>
-
-      {showHeaderFooter && <Footer onNavigate={handleNavigate} />}
-    </div>
+      <Footer onNavigate={handleNavigate} />
+    </>
   );
 }
 
 export default function App() {
   return (
-    <AuthProvider>
+    <BrowserRouter>
       <AppContent />
-    </AuthProvider>
+    </BrowserRouter>
   );
 }

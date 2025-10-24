@@ -1,4 +1,4 @@
-import { Plus, Briefcase, Users, Eye, CheckCircle, XCircle, Calendar, ArrowLeft, Edit, Trash2 } from 'lucide-react';
+import { Plus, Briefcase, Users, Eye, CheckCircle, XCircle, Calendar, ArrowLeft, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -12,20 +12,51 @@ import {
   TableRow,
 } from './ui/table';
 import { mockJobs, mockApplications, mockEmployer } from '../data/mockData';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchEmployer } from '../api/employers';
+import { EmployerResponse } from '../api/employers';
+import { Alert, AlertDescription } from './ui/alert';
 
 interface EmployerDashboardProps {
   onNavigate: (page: string) => void;
 }
 
 export function EmployerDashboard({ onNavigate }: EmployerDashboardProps) {
+  const { user, token } = useAuth();
   const [myJobs, setMyJobs] = useState(mockJobs.filter(job => job.employerId === mockEmployer.id));
-  const myApplications = mockApplications.filter(app =>
+  const [myApplications] = useState(mockApplications.filter(app =>
     myJobs.some(job => job.id === app.jobId)
-  );
+  ));
+  const [employer, setEmployer] = useState<EmployerResponse | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const totalViews = myJobs.reduce((sum, job) => sum + job.views, 0);
   const totalApplications = myJobs.reduce((sum, job) => sum + job.applications, 0);
+
+  // Check employer verification status on mount
+  useEffect(() => {
+    const checkVerificationStatus = async () => {
+      if (!user || !token) return;
+
+      try {
+        const employerData = await fetchEmployer(user.id, token);
+        setEmployer(employerData);
+
+        // If verification is pending, redirect to verification page
+        if (employerData.verificationStatus === 'pending') {
+          onNavigate('verification');
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to fetch employer data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkVerificationStatus();
+  }, [user, token, onNavigate]);
 
   const handleEditJob = (jobId: string) => {
     // In a real app, this would open an edit modal or navigate to edit page
@@ -42,6 +73,39 @@ export function EmployerDashboard({ onNavigate }: EmployerDashboardProps) {
     // In a real app, this would navigate to applications page for this job
     alert(`Viewing applications for job ${jobId}`);
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If employer is not verified, show verification required message
+  if (employer?.verificationStatus === 'pending') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto text-center">
+            <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-yellow-600" />
+            <h1 className="text-3xl text-gray-900 mb-2">Verification Required</h1>
+            <p className="text-gray-600 mb-6">
+              Your employer account needs to be verified before you can access the dashboard and post jobs.
+              Please complete the verification process.
+            </p>
+            <Button onClick={() => onNavigate('verification')} className="bg-blue-600 hover:bg-blue-700">
+              Go to Verification
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -65,14 +129,40 @@ export function EmployerDashboard({ onNavigate }: EmployerDashboardProps) {
               <p className="text-gray-600">Manage your job postings and applications</p>
             </div>
             <Button
-              className="bg-blue-600 hover:bg-blue-700"
-              onClick={() => onNavigate('post-job')}
+              className="bg-gray-600 hover:bg-gray-700 cursor-not-allowed"
+              disabled
             >
               <Plus className="w-4 h-4 mr-2" />
-              Post New Job
+              Post New Job (Subscription Required)
             </Button>
           </div>
         </div>
+
+        {/* Verification Status Alert */}
+        {employer?.verificationStatus === 'approved' && (
+          <Alert className="mb-8 border-green-200 bg-green-50">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              Your account is verified! You can now post jobs and access all employer features.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Subscription Alert */}
+        <Alert className="mb-8 border-blue-200 bg-blue-50">
+          <AlertTriangle className="w-4 h-4 text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            To start posting jobs, you need to subscribe to a plan. Choose a subscription plan that fits your needs.
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-4"
+              onClick={() => onNavigate('subscription')}
+            >
+              View Plans
+            </Button>
+          </AlertDescription>
+        </Alert>
 
         {/* Stats Cards */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
@@ -115,22 +205,23 @@ export function EmployerDashboard({ onNavigate }: EmployerDashboardProps) {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Subscription</p>
-                <p className="text-sm text-green-600">Active</p>
+                <p className="text-sm text-gray-500 mb-1">Verification</p>
+                <p className="text-sm text-green-600">Verified</p>
               </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-orange-600" />
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
             </div>
           </Card>
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="jobs" className="w-full">
+        <Tabs defaultValue="subscription" className="w-full">
           <TabsList>
+            <TabsTrigger value="subscription">Subscription</TabsTrigger>
             <TabsTrigger value="jobs">My Jobs</TabsTrigger>
             <TabsTrigger value="applications">Applications</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="analytics" onClick={() => onNavigate('analytics')}>Analytics</TabsTrigger>
             <TabsTrigger value="verification">Verification</TabsTrigger>
           </TabsList>
 
@@ -174,13 +265,13 @@ export function EmployerDashboard({ onNavigate }: EmployerDashboardProps) {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => handleEditJob(job.id)}>
+                            <Button variant="outline" size="sm" disabled className="cursor-not-allowed">
                               <Edit className="w-4 h-4 mr-1" />
-                              Edit
+                              Edit (Subscription Required)
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleCloseJob(job.id)}>
+                            <Button variant="outline" size="sm" disabled className="cursor-not-allowed">
                               <Trash2 className="w-4 h-4 mr-1" />
-                              Close
+                              Close (Subscription Required)
                             </Button>
                           </div>
                         </TableCell>
@@ -229,17 +320,17 @@ export function EmployerDashboard({ onNavigate }: EmployerDashboardProps) {
                               {application.status}
                             </Badge>
                           </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm" onClick={() => handleViewApplications(application.jobId)}>
-                                View Resume
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                <Calendar className="w-4 h-4 mr-1" />
-                                Schedule
-                              </Button>
-                            </div>
-                          </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" disabled className="cursor-not-allowed">
+                              View Resume (Subscription Required)
+                            </Button>
+                            <Button variant="outline" size="sm" disabled className="cursor-not-allowed">
+                              <Calendar className="w-4 h-4 mr-1" />
+                              Schedule (Subscription Required)
+                            </Button>
+                          </div>
+                        </TableCell>
                         </TableRow>
                       );
                     })}
@@ -249,58 +340,18 @@ export function EmployerDashboard({ onNavigate }: EmployerDashboardProps) {
             </Card>
           </TabsContent>
 
-          <TabsContent value="analytics" className="mt-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card className="p-6">
-                <h3 className="text-lg text-gray-900 mb-4">Job Performance</h3>
-                <div className="space-y-4">
-                  {myJobs.map((job) => (
-                    <div key={job.id} className="pb-4 border-b last:border-b-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm text-gray-900">{job.title}</p>
-                        <Badge variant="outline">{job.applications} applications</Badge>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span>{job.views} views</span>
-                        <span>•</span>
-                        <span>{Math.round((job.applications / job.views) * 100)}% conversion</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-
-              <Card className="p-6">
-                <h3 className="text-lg text-gray-900 mb-4">Subscription Details</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Plan</span>
-                    <span className="text-gray-900">Annual Plan</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Jobs Posted</span>
-                    <span className="text-gray-900">{myJobs.length} / 150</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Valid Until</span>
-                    <span className="text-gray-900">{mockEmployer.subscriptionEndDate}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Status</span>
-                    <Badge className="bg-green-100 text-green-700 border-green-200" variant="outline">
-                      Active
-                    </Badge>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    className="w-full mt-4"
-                    onClick={() => onNavigate('subscription')}
-                  >
-                    Manage Subscription
-                  </Button>
-                </div>
-              </Card>
-            </div>
+          <TabsContent value="subscription" className="mt-6">
+            <Card className="p-6">
+              <div className="text-center py-8">
+                <h3 className="text-lg text-gray-900 mb-4">Choose Your Subscription Plan</h3>
+                <p className="text-gray-600 mb-6">
+                  Select a subscription plan to start posting jobs and access all employer features.
+                </p>
+                <Button onClick={() => onNavigate('subscription')}>
+                  View Subscription Plans
+                </Button>
+              </div>
+            </Card>
           </TabsContent>
 
           <TabsContent value="verification" className="mt-6">

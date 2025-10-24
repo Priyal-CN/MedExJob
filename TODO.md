@@ -1,7 +1,10 @@
-# TODO: Fix 404 Error in Spring Boot Application
+# TODO: Make Employer Verification Process Fully Dynamic
 
-## Steps to Complete
-- [ ] Remove context-path from application.yml to make endpoints root-level
-- [ ] Update AuthContext.tsx to remove '/api' from fetch URLs
-- [ ] Restart the Spring Boot server
-- [ ] Test endpoints in Postman to confirm 404 is resolved
+## Pending Tasks
+- [ ] Update EmployerVerification.tsx to fetch real employer verification status
+- [ ] Implement conditional rendering based on verification status (approved -> redirect to subscription, pending -> show upload form, rejected -> show rejection message)
+- [ ] Add API call to fetch current employer's verification status on component mount
+- [ ] Handle loading states and error handling for API calls
+- [ ] Remove mock data and integrate with real employer data from API
+- [ ] Test the complete verification flow from upload → admin review → payment redirect
+- [ ] Ensure proper navigation using React Router

@@ -8,39 +8,20 @@ import { JobSector, JobCategory } from '../types';
 
 interface FilterSidebarProps {
   onFilterChange: (filters: FilterOptions) => void;
+  categories: string[];
+  locations: string[];
 }
 
 export interface FilterOptions {
   sectors: JobSector[];
-  categories: JobCategory[];
+  categories: string[];
   locations: string[];
   featured: boolean;
 }
 
-const categories: JobCategory[] = [
-  'Junior Resident',
-  'Senior Resident',
-  'Medical Officer',
-  'Faculty',
-  'Specialist',
-  'AYUSH',
-  'Paramedical / Nursing'
-];
+// categories and locations are provided by parent from backend meta
 
-const locations = [
-  'New Delhi',
-  'Mumbai',
-  'Bangalore',
-  'Chennai',
-  'Kolkata',
-  'Hyderabad',
-  'Pune',
-  'Jaipur',
-  'Chandigarh',
-  'Lucknow'
-];
-
-export function FilterSidebar({ onFilterChange }: FilterSidebarProps) {
+export function FilterSidebar({ onFilterChange, categories, locations }: FilterSidebarProps) {
   const [filters, setFilters] = useState<FilterOptions>({
     sectors: [],
     categories: [],
@@ -58,7 +39,7 @@ export function FilterSidebar({ onFilterChange }: FilterSidebarProps) {
     onFilterChange(newFilters);
   };
 
-  const handleCategoryChange = (category: JobCategory, checked: boolean) => {
+  const handleCategoryChange = (category: string, checked: boolean) => {
     const newCategories = checked
       ? [...filters.categories, category]
       : filters.categories.filter(c => c !== category);
