@@ -1,11 +1,11 @@
-const API_BASE = (import.meta as any).env?.VITE_API_BASE || 'http://localhost:8081';
+import apiClient from './apiClient';
 
 export interface ApplicationPayload {
   jobId: string;
+  candidateId: string;
   candidateName: string;
   candidateEmail: string;
   candidatePhone: string;
-  token: string;
   resume?: File;
   notes?: string;
 }
@@ -13,6 +13,7 @@ export interface ApplicationPayload {
 export interface ApplicationQuery {
   jobId?: string;
   candidateId?: string;
+  candidateEmail?: string;
   status?: 'applied' | 'shortlisted' | 'interview' | 'selected' | 'rejected';
   search?: string;
   page?: number;
@@ -37,70 +38,53 @@ export interface ApplicationResponse {
 }
 
 export async function applyForJob(payload: ApplicationPayload): Promise<ApplicationResponse> {
-  const formData = new FormData();
-  formData.append('jobId', payload.jobId);
-  formData.append('candidateName', payload.candidateName);
-  formData.append('candidateEmail', payload.candidateEmail);
-  formData.append('candidatePhone', payload.candidatePhone);
-  if (payload.resume) {
-    formData.append('resume', payload.resume);
-  }
-  if (payload.notes) {
-    formData.append('notes', payload.notes);
-  }
-
-  const res = await fetch(`${API_BASE}/api/applications`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${payload.token}`,
-    },
-    body: formData,
-  });
-  if (!res.ok) throw new Error(`Failed to apply for job (${res.status})`);
-  return res.json();
+    const formData = new FormData();
+    formData.append('jobId', payload.jobId);
+    formData.append('candidateId', payload.candidateId);
+    formData.append('candidateName', payload.candidateName);
+    formData.append('candidateEmail', payload.candidateEmail);
+    formData.append('candidatePhone', payload.candidatePhone);
+    if (payload.resume) {
+        formData.append('resume', payload.resume);
+    }
+    if (payload.notes) {
+        formData.append('notes', payload.notes);
+    }
+    
+    // Use apiClient which handles auth token automatically
+    // Don't set Content-Type header - let the browser set it with boundary for multipart/form-data
+    const response = await apiClient.post('/api/applications', formData);
+    return response.data;
 }
 
-export async function fetchApplications(params: ApplicationQuery = {}, token: string) {
-  const qs = new URLSearchParams();
-  if (params.jobId) qs.set('jobId', params.jobId);
-  if (params.candidateId) qs.set('candidateId', params.candidateId);
-  if (params.status) qs.set('status', params.status);
-  if (params.search) qs.set('search', params.search);
-  qs.set('page', String(params.page ?? 0));
-  qs.set('size', String(params.size ?? 20));
-  qs.set('sort', params.sort || 'appliedDate,desc');
-
-  const res = await fetch(`${API_BASE}/api/applications?${qs.toString()}`, {
-    cache: 'no-store',
-    headers: {
-      'Cache-Control': 'no-cache',
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-  if (!res.ok) throw new Error(`Failed to fetch applications (${res.status})`);
-  return res.json();
+export async function fetchApplications(params: ApplicationQuery = {}) {
+    try {
+        console.log('Fetching applications with params:', params);
+        const response = await apiClient.get('/api/applications', { params });
+        console.log('Applications API response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('Error in fetchApplications:', error);
+        throw error;
+    }
 }
 
-export async function updateApplicationStatus(id: string, status: string, token: string, notes?: string, interviewDate?: string | null) {
-  const payload: any = { status };
-  if (notes) payload.notes = notes;
-  if (interviewDate) payload.interviewDate = interviewDate;
+export async function fetchMyApplications(params: ApplicationQuery = {}) {
+    const response = await apiClient.get('/api/applications/my', { params });
+    return response.data;
+}
 
-  const res = await fetch(`${API_BASE}/api/applications/${id}/status`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`Failed to update application status (${res.status})`);
-  return res.json();
+export async function updateApplicationStatus(id: string, status: string, notes?: string, interviewDate?: string | null) {
+    const payload: any = { status };
+    if (notes) payload.notes = notes;
+    if (interviewDate) payload.interviewDate = interviewDate;
+    
+    const response = await apiClient.put(`/api/applications/${id}/status`, payload);
+    return response.data;
 }
 
 export async function deleteApplication(id: string) {
-  const res = await fetch(`${API_BASE}/api/applications/${id}`, {
-    method: 'DELETE',
-  });
-  if (!res.ok && res.status !== 204) throw new Error(`Failed to delete application (${res.status})`);
+    const response = await apiClient.delete(`/api/applications/${id}`);
+    // Axios throws for non-2xx statuses, so no need to check for res.ok
+    return response.data;
 }

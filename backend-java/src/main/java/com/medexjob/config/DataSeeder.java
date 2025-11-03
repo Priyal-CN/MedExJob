@@ -23,6 +23,18 @@ public class DataSeeder implements CommandLineRunner {
     @Value("${SEED_JOBS:false}")
     private boolean seedJobs;
 
+    @Value("${SEED_ADMIN_NAME:System Admin}")
+    private String adminName;
+
+    @Value("${SEED_ADMIN_EMAIL:admin@medexjob.com}")
+    private String adminEmail;
+
+    @Value("${SEED_ADMIN_PHONE:0000000001}")
+    private String adminPhone;
+
+    @Value("${SEED_ADMIN_PASSWORD:Admin@123}")
+    private String adminPassword;
+
     @Value("${SEED_EMPLOYER_NAME:Seeder Organization}")
     private String employerName;
 
@@ -105,6 +117,21 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         if (!seedJobs) return; // only run when explicitly enabled
+
+        User admin = userRepository.findAll().stream()
+                .filter(u -> u.getEmail().equalsIgnoreCase(adminEmail))
+                .findFirst()
+                .orElseGet(() -> {
+                    User a = new User();
+                    a.setName(adminName);
+                    a.setEmail(adminEmail);
+                    a.setPhone(adminPhone);
+                    a.setRole(User.UserRole.ADMIN);
+                    a.setPasswordHash(passwordEncoder.encode(adminPassword));
+                    a.setIsVerified(true);
+                    a.setEmailVerifiedAt(java.time.LocalDateTime.now());
+                    return userRepository.save(a);
+                });
 
         // Create Employer User if not exists
         User user = userRepository.findAll().stream()

@@ -183,13 +183,3 @@ java -jar target/medexjob-backend-1.0.0.jar
 
 ## 📄 License
 This project is licensed under the MIT License.
-
-
-
-
-
-
-
-
-
-

@@ -1,6 +1,9 @@
+import React from 'react';
 import { Bell, User, Menu, Briefcase } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { useAuth } from '../contexts/AuthContext';
+import { mockNotifications } from '../data/mockData';
 
 interface HeaderProps {
   currentPage: string;
@@ -9,11 +12,9 @@ interface HeaderProps {
   userRole?: 'admin' | 'employer' | 'candidate' | string;
 }
 
-import { useAuth } from '../contexts/AuthContext';
-import { mockNotifications } from '../data/mockData';
 
 export function Header({ currentPage, onNavigate, isAuthenticated, userRole }: HeaderProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const unreadCount = isAuthenticated && user
     ? mockNotifications.filter(n => n.userId === user.id && !n.read).length
     : 0;
@@ -102,6 +103,11 @@ export function Header({ currentPage, onNavigate, isAuthenticated, userRole }: H
                   onClick={() => onNavigate('dashboard')}
                 >
                   <User className="w-5 h-5" />
+                </Button>
+
+                {/* Logout */}
+                <Button variant="outline" onClick={() => { logout(); onNavigate('login'); }}>
+                  Logout
                 </Button>
               </>
             ) : (

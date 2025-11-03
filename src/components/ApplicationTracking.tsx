@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Clock, CheckCircle, XCircle, Calendar, FileText, Eye, MessageSquare, Phone, Mail, MapPin } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -8,8 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
-import { mockApplications, mockJobs } from '../data/mockData';
 import { Application, ApplicationStatus } from '../types';
+import { fetchApplications } from '../api/applications';
 
 interface ApplicationTrackingProps {
   userRole: 'candidate' | 'employer';
@@ -26,21 +26,42 @@ export function ApplicationTracking({ userRole, userId }: ApplicationTrackingPro
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [isInterviewDialogOpen, setIsInterviewDialogOpen] = useState(false);
 
-  // Mock data - in real app, this would come from API
-  const mockApplicationsWithJobs: ApplicationWithJob[] = [
-    {
-      ...mockApplications[0],
-      job: mockJobs.find(j => j.id === mockApplications[0].jobId)
-    },
-    {
-      ...mockApplications[1],
-      job: mockJobs.find(j => j.id === mockApplications[1].jobId)
-    },
-    {
-      ...mockApplications[2],
-      job: mockJobs.find(j => j.id === mockApplications[2].jobId)
-    }
-  ];
+  useEffect(() => {
+    (async () => {
+      try {
+        // If candidate, fetch by candidateId when available; otherwise fall back to search by userId/email
+        const params: any = { page: 0, size: 50, sort: 'appliedDate,desc' };
+        if (userRole === 'candidate') {
+          params.candidateId = userId;
+        }
+        const res = await fetchApplications(params);
+        const content = Array.isArray(res?.content) ? res.content : [];
+        const mapped: ApplicationWithJob[] = content.map((a: any) => ({
+          id: a.id,
+          jobId: a.jobId,
+          candidateId: a.candidateId,
+          candidateName: a.candidateName,
+          candidateEmail: a.candidateEmail,
+          candidatePhone: a.candidatePhone,
+          resumeUrl: a.resumeUrl,
+          status: a.status,
+          appliedDate: a.appliedDate,
+          interviewDate: a.interviewDate,
+          notes: a.notes,
+          job: {
+            id: a.jobId,
+            title: a.jobTitle,
+            organization: a.jobOrganization,
+            location: '',
+            sector: 'private',
+          }
+        }));
+        setApplications(mapped);
+      } catch {
+        setApplications([]);
+      }
+    })();
+  }, [userRole, userId]);
 
   const getStatusIcon = (status: ApplicationStatus) => {
     switch (status) {
@@ -167,7 +188,7 @@ export function ApplicationTracking({ userRole, userId }: ApplicationTrackingPro
 
           <TabsContent value="all" className="mt-6">
             <div className="space-y-6">
-              {mockApplicationsWithJobs.map((application) => (
+              {applications.map((application: ApplicationWithJob) => (
                 <Card key={application.id} className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
@@ -344,43 +365,12 @@ export function ApplicationTracking({ userRole, userId }: ApplicationTrackingPro
 
           <TabsContent value="active" className="mt-6">
             <div className="space-y-6">
-              {mockApplicationsWithJobs
-                .filter(app => ['applied', 'shortlisted'].includes(app.status))
-                .map((application) => (
+              {applications
+                .filter((app: ApplicationWithJob) => ['applied', 'shortlisted'].includes(app.status))
+                .map((application: ApplicationWithJob) => (
                   <Card key={application.id} className="p-6">
-                    {/* Same content as above but filtered */}
                     <div className="text-center py-8">
                       <p className="text-gray-500">Active applications will be shown here</p>
-                    </div>
-                  </Card>
-                ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="interview" className="mt-6">
-            <div className="space-y-6">
-              {mockApplicationsWithJobs
-                .filter(app => app.status === 'interview')
-                .map((application) => (
-                  <Card key={application.id} className="p-6">
-                    {/* Same content as above but filtered */}
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">Interview scheduled applications will be shown here</p>
-                    </div>
-                  </Card>
-                ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="completed" className="mt-6">
-            <div className="space-y-6">
-              {mockApplicationsWithJobs
-                .filter(app => ['selected', 'rejected'].includes(app.status))
-                .map((application) => (
-                  <Card key={application.id} className="p-6">
-                    {/* Same content as above but filtered */}
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">Completed applications will be shown here</p>
                     </div>
                   </Card>
                 ))}
@@ -516,5 +506,3 @@ function InterviewSchedulingForm({ application, onSchedule, onCancel }: Intervie
     </form>
   );
 }
-
-

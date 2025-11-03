@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, Building2, User, Mail, FileText, Eye, Upload } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -35,9 +35,12 @@ export function EmployerVerificationPage({ onNavigate }: EmployerVerificationPag
   const [loading, setLoading] = useState(true);
   const [selectedEmployer, setSelectedEmployer] = useState<any | null>(null);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewAction, setReviewAction] = useState<'approved' | 'rejected'>('approved');
   const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [approving, setApproving] = useState<string | null>(null);
+  const [rejecting, setRejecting] = useState<string | null>(null);
 
   useEffect(() => {
     loadEmployers();
@@ -48,43 +51,11 @@ export function EmployerVerificationPage({ onNavigate }: EmployerVerificationPag
 
     try {
       setLoading(true);
-      const response = await fetchEmployers({}, token);
+      const response = await fetchEmployers({});
       setEmployers(response.employers || []);
     } catch (error) {
       console.error('Failed to load employers:', error);
-      // Fallback to mock data if API fails
-      setEmployers([
-        {
-          id: '1',
-          companyName: 'TechCorp Solutions',
-          userName: 'Sarah Johnson',
-          userEmail: 'sarah.johnson@techcorp.com',
-          companyType: 'hospital',
-          verificationStatus: 'pending',
-          createdAt: '2024-10-20T10:00:00',
-          verificationNotes: 'New tech company seeking to post software engineering positions.'
-        },
-        {
-          id: '2',
-          companyName: 'Green Energy Ltd',
-          userName: 'Mike Chen',
-          userEmail: 'mike.chen@greenenergy.com',
-          companyType: 'consultancy',
-          verificationStatus: 'pending',
-          createdAt: '2024-10-18T14:30:00',
-          verificationNotes: 'Renewable energy company expanding their team.'
-        },
-        {
-          id: '3',
-          companyName: 'City Hospital',
-          userName: 'Dr. Emily Davis',
-          userEmail: 'emily.davis@cityhospital.gov',
-          companyType: 'hospital',
-          verificationStatus: 'approved',
-          createdAt: '2024-09-15T09:15:00',
-          verificationNotes: 'Government hospital verified for medical positions.'
-        }
-      ]);
+      setEmployers([]);
     } finally {
       setLoading(false);
     }
@@ -97,6 +68,66 @@ export function EmployerVerificationPage({ onNavigate }: EmployerVerificationPag
     setIsReviewDialogOpen(true);
   };
 
+  // Quick approve without dialog
+  const handleQuickApprove = async (employer: any) => {
+    if (!employer || !token) return;
+    
+    // Confirm before approving
+    if (!window.confirm(`Are you sure you want to approve "${employer.companyName}"? They will be able to log in immediately.`)) {
+      return;
+    }
+
+    setApproving(employer.id);
+    try {
+      await updateEmployerVerificationStatus(
+        employer.id,
+        'approved',
+        'Approved by admin'
+      );
+
+      // Reload employers to get updated status
+      await loadEmployers();
+      
+      alert(`✅ Success! Employer "${employer.companyName}" has been approved. They can now log in and access their dashboard.`);
+    } catch (error: any) {
+      console.error('Failed to update verification status:', error);
+      const errorMessage = error?.message || 'Failed to update verification status. Please try again.';
+      alert(`❌ Error: ${errorMessage}`);
+    } finally {
+      setApproving(null);
+    }
+  };
+
+  // Quick reject without dialog
+  const handleQuickReject = async (employer: any) => {
+    if (!employer || !token) return;
+    
+    // Confirm before rejecting
+    if (!window.confirm(`Are you sure you want to reject "${employer.companyName}"?`)) {
+      return;
+    }
+
+    setRejecting(employer.id);
+    try {
+      await updateEmployerVerificationStatus(
+        employer.id,
+        'rejected',
+        'Rejected by admin'
+      );
+
+      // Reload employers to get updated status
+      await loadEmployers();
+      
+      alert(`Employer "${employer.companyName}" has been rejected.`);
+    } catch (error: any) {
+      console.error('Failed to update verification status:', error);
+      const errorMessage = error?.message || 'Failed to update verification status. Please try again.';
+      alert(`❌ Error: ${errorMessage}`);
+    } finally {
+      setRejecting(null);
+    }
+  };
+
   const submitReview = async () => {
     if (!selectedEmployer || !token) return;
 
@@ -104,7 +135,6 @@ export function EmployerVerificationPage({ onNavigate }: EmployerVerificationPag
       await updateEmployerVerificationStatus(
         selectedEmployer.id,
         reviewAction,
-        token,
         reviewNotes
       );
 
@@ -114,12 +144,19 @@ export function EmployerVerificationPage({ onNavigate }: EmployerVerificationPag
       setIsReviewDialogOpen(false);
       setSelectedEmployer(null);
       setReviewNotes('');
-    } catch (error) {
+      
+      // Show success message
+      if (reviewAction === 'approved') {
+        alert(`✅ Success! Employer "${selectedEmployer.companyName}" has been approved. They can now log in and access their dashboard.`);
+      } else {
+        alert(`Employer "${selectedEmployer.companyName}" has been rejected.`);
+      }
+    } catch (error: any) {
       console.error('Failed to update verification status:', error);
-      // For now, just close the dialog
-      setIsReviewDialogOpen(false);
-      setSelectedEmployer(null);
-      setReviewNotes('');
+      const errorMessage = error?.message || 'Failed to update verification status. Please try again.';
+      alert(`❌ Error: ${errorMessage}`);
+      // Keep dialog open on error so user can see the error and retry if needed
+      // The dialog will stay open because we're not calling setIsReviewDialogOpen(false)
     }
   };
 
@@ -129,7 +166,7 @@ export function EmployerVerificationPage({ onNavigate }: EmployerVerificationPag
 
     try {
       setUploadingDocument(true);
-      await uploadEmployerDocument(selectedEmployer.id, file, token);
+      await uploadEmployerDocument(selectedEmployer.id, file);
       // Could show success message here
     } catch (error) {
       console.error('Failed to upload document:', error);
@@ -263,7 +300,7 @@ export function EmployerVerificationPage({ onNavigate }: EmployerVerificationPag
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setSelectedEmployer(employer)}
+                          onClick={() => { setSelectedEmployer(employer); setIsViewDialogOpen(true); }}
                         >
                           <Eye className="w-4 h-4 mr-1" />
                           View
@@ -273,20 +310,49 @@ export function EmployerVerificationPage({ onNavigate }: EmployerVerificationPag
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleReview(employer, 'approved')}
-                              className="text-green-600 hover:text-green-700"
+                              onClick={() => handleQuickApprove(employer)}
+                              disabled={approving === employer.id}
+                              className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
                             >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Approve
+                              {approving === employer.id ? (
+                                <>
+                                  <div className="w-4 h-4 mr-1 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                                  Approving...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Approve
+                                </>
+                              )}
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleReview(employer, 'rejected')}
-                              className="text-red-600 hover:text-red-700"
+                              onClick={() => handleQuickReject(employer)}
+                              disabled={rejecting === employer.id}
+                              className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
                             >
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Reject
+                              {rejecting === employer.id ? (
+                                <>
+                                  <div className="w-4 h-4 mr-1 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                                  Rejecting...
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="w-4 h-4 mr-1" />
+                                  Reject
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReview(employer, 'approved')}
+                              className="text-blue-600 hover:text-blue-700"
+                              title="Approve with custom notes"
+                            >
+                              Review
                             </Button>
                           </>
                         )}
@@ -327,6 +393,51 @@ export function EmployerVerificationPage({ onNavigate }: EmployerVerificationPag
                 </Button>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Employer Details Dialog */}
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent className="sm:max-w-[560px]">
+            <DialogHeader>
+              <DialogTitle>Employer Details</DialogTitle>
+            </DialogHeader>
+            {selectedEmployer && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm">Company</Label>
+                    <p className="text-sm text-gray-900">{selectedEmployer.companyName}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm">Type</Label>
+                    <div className="mt-1">{getCompanyTypeBadge(selectedEmployer.companyType)}</div>
+                  </div>
+                  <div>
+                    <Label className="text-sm">Contact Name</Label>
+                    <p className="text-sm text-gray-900">{selectedEmployer.userName}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm">Email</Label>
+                    <p className="text-sm text-gray-900">{selectedEmployer.userEmail}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm">Status</Label>
+                    <div className="mt-1">{getStatusBadge(selectedEmployer.verificationStatus)}</div>
+                  </div>
+                  <div>
+                    <Label className="text-sm">Submitted</Label>
+                    <p className="text-sm text-gray-900">{new Date(selectedEmployer.createdAt).toLocaleString()}</p>
+                  </div>
+                </div>
+                {selectedEmployer.verificationNotes && (
+                  <div>
+                    <Label className="text-sm">Notes</Label>
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedEmployer.verificationNotes}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>

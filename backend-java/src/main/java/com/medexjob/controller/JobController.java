@@ -6,13 +6,22 @@ import com.medexjob.repository.UserRepository;
 import com.medexjob.entity.Job;
 import com.medexjob.repository.JobRepository;
 import com.medexjob.repository.EmployerRepository;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*; // Contains @CrossOrigin
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.MediaType;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,11 +33,13 @@ public class JobController {
     private final JobRepository jobRepository;
     private final EmployerRepository employerRepository;
     private final UserRepository userRepository; // Inject UserRepository
+    private final BCryptPasswordEncoder passwordEncoder;
 
-    public JobController(JobRepository jobRepository, EmployerRepository employerRepository, UserRepository userRepository) {
+    public JobController(JobRepository jobRepository, EmployerRepository employerRepository, UserRepository userRepository, BCryptPasswordEncoder passwordEncoder) {
         this.jobRepository = jobRepository;
         this.employerRepository = employerRepository;
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @GetMapping
@@ -168,6 +179,63 @@ public class JobController {
         return ResponseEntity.noContent().build();
     }
 
+    // File Upload Endpoint
+    @PostMapping("/upload")
+    public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
+        }
+
+        try {
+            // Create uploads directory if it doesn't exist
+            Path uploadDir = Paths.get("uploads");
+            if (!Files.exists(uploadDir)) {
+                Files.createDirectories(uploadDir);
+            }
+
+            // Generate unique filename
+            String originalFilename = file.getOriginalFilename();
+            String extension = originalFilename != null && originalFilename.contains(".")
+                ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                : "";
+            String filename = UUID.randomUUID().toString() + extension;
+
+            // Save file
+            Path filePath = uploadDir.resolve(filename);
+            Files.write(filePath, file.getBytes());
+
+            // Return URL
+            String fileUrl = "/uploads/" + filename;
+            return ResponseEntity.ok(Map.of("url", fileUrl));
+
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to upload file"));
+        }
+    }
+
+    // Serve uploaded files through API path so frontend proxy can access
+    @GetMapping("/files/{filename}")
+    public ResponseEntity<Resource> serveFile(@PathVariable("filename") String filename) {
+        try {
+            Path uploadDir = Paths.get("uploads");
+            Path filePath = uploadDir.resolve(filename).normalize();
+            if (!Files.exists(filePath)) {
+                return ResponseEntity.notFound().build();
+            }
+            Resource resource = new UrlResource(filePath.toUri());
+            if (!resource.exists() || !resource.isReadable()) {
+                return ResponseEntity.notFound().build();
+            }
+            String contentType = Files.probeContentType(filePath);
+            MediaType mediaType = contentType != null ? MediaType.parseMediaType(contentType) : MediaType.APPLICATION_OCTET_STREAM;
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     // Helper: map request onto entity
     private void applyRequestToJob(JobRequest req, Job job) {
         // Employer from organization + type
@@ -180,13 +248,16 @@ public class JobController {
         job.setCategory(mapCategoryFromLabel(Optional.ofNullable(req.category()).orElse("")));
         job.setLocation(Optional.ofNullable(req.location()).orElse(""));
         job.setQualification(Optional.ofNullable(req.qualification()).orElse(""));
-        job.setExperience(Optional.ofNullable(req.experience()).orElse(""));
+        job.setExperience(req.experience()); // Can be null now
         job.setExperienceLevel(req.experienceLevel() != null ? parseExperienceLevel(req.experienceLevel()) : null);
         job.setSpeciality(Optional.ofNullable(req.speciality()).orElse(""));
         job.setDutyType(req.dutyType() != null ? parseDutyType(req.dutyType()) : null);
         job.setNumberOfPosts(Optional.ofNullable(req.numberOfPosts()).orElse(1));
+        // Gender is stored for future use but not currently in Job entity
+        // If you want to add it later, uncomment: job.setGender(req.gender());
         job.setSalaryRange(req.salary());
         job.setPdfUrl(req.pdfUrl());
+        job.setImageUrl(req.imageUrl());
         job.setApplyLink(req.applyLink());
         job.setRequirements(req.requirements()); // Set requirements
         job.setBenefits(req.benefits()); // Set benefits
@@ -225,7 +296,8 @@ public class JobController {
             dummyUser.setEmail(dummyEmail);
             dummyUser.setPhone("0000000000");
             dummyUser.setRole(User.UserRole.EMPLOYER); // Must be an EMPLOYER role
-            dummyUser.setPasswordHash("dummy_password_hash"); // Placeholder, should be properly hashed
+            dummyUser.setPasswordHash(passwordEncoder.encode("dummy_password")); // Properly hashed password
+            dummyUser.setIsActive(true); // Set as active
             return userRepository.save(dummyUser);
         });
         newEmployer.setUser(employerUser);
@@ -314,12 +386,14 @@ public class JobController {
         String speciality,
         String dutyType,
         Integer numberOfPosts,
+        String gender,
         String salary,
         String description,
         String lastDate,
         String requirements,
         String benefits,
         String pdfUrl,
+        String imageUrl,
         String applyLink,
         String status,
         Boolean featured,
@@ -354,6 +428,7 @@ public class JobController {
         m.put("lastDate", j.getLastDate() != null ? j.getLastDate().toString() : null);
         m.put("postedDate", j.getCreatedAt() != null ? j.getCreatedAt().toString() : null);
         m.put("pdfUrl", j.getPdfUrl());
+        m.put("imageUrl", j.getImageUrl());
         m.put("applyLink", j.getApplyLink());
         m.put("status", j.getStatus().name().toLowerCase());
         m.put("featured", Boolean.TRUE.equals(j.getIsFeatured()));

@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Mail, Lock, User, Phone, Building2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { useAuth } from '../contexts/AuthContext';
+import { testRoleNavigation } from '../utils/roleNavigation';
 
 interface AuthPageProps {
   mode: 'login' | 'register';
@@ -14,21 +16,28 @@ interface AuthPageProps {
 }
 
 export function AuthPage({ mode, onNavigate }: AuthPageProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { login, register } = useAuth();
   const [userRole, setUserRole] = useState<'candidate' | 'employer' | 'admin'>('candidate');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // This effect handles success messages passed via navigation state
   useEffect(() => {
-    if (mode === 'login') {
-      const flag = localStorage.getItem('registrationSuccess');
-      if (flag) {
-        setSuccessMessage('Registration successful! Please log in to continue.');
-        localStorage.removeItem('registrationSuccess');
-      }
+    if (location.state?.successMessage) {
+      setSuccessMessage(location.state.successMessage);
+      // Clear the state from history so the message doesn't reappear on back/forward
+      navigate(location.pathname, { replace: true, state: {} });
+    } else if (mode === 'login') {
+        const flag = localStorage.getItem('registrationSuccess');
+        if (flag) {
+            setSuccessMessage('Registration successful! Please log in to continue.');
+            localStorage.removeItem('registrationSuccess');
+        }
     }
-  }, [mode]);
+  }, [mode, location, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,8 +50,54 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
 
     try {
       const loggedInUser = await login(email, password);
-      // Navigate to dashboard without role parameter
-      onNavigate('dashboard');
+      // If there's a redirect path from location state, use it
+      if (location.state?.from?.pathname) {
+        navigate(location.state.from.pathname, { replace: true });
+      } else {
+        // Navigate directly to the correct dashboard based on the logged-in user's role
+        // Get role and normalize to uppercase for comparison
+        const userRole = loggedInUser.role ? String(loggedInUser.role).toUpperCase() : '';
+        
+        // Debug logging
+        console.log('Login successful - User data:', loggedInUser);
+        console.log('Detected role:', userRole);
+        console.log('Role comparison - ADMIN:', userRole === 'ADMIN');
+        console.log('Role comparison - EMPLOYER:', userRole === 'EMPLOYER');
+        console.log('Role comparison - CANDIDATE:', userRole === 'CANDIDATE');
+        
+        // Test role navigation
+        const expectedPath = testRoleNavigation(userRole);
+        console.log('Expected navigation path:', expectedPath);
+        
+        // Navigate based on role - ensure exact match with fallback
+        if (userRole === 'ADMIN') {
+          console.log('✅ Navigating to ADMIN dashboard');
+          navigate('/dashboard/admin', { replace: true });
+        } else if (userRole === 'EMPLOYER') {
+          console.log('✅ Navigating to EMPLOYER dashboard');
+          // Check if employer is verified
+          if (!loggedInUser.isVerified) {
+            console.log('Employer not verified, going to verification pending');
+            navigate('/verification-pending', { 
+              replace: true,
+              state: { 
+                message: 'Your account is pending verification. Admin will verify within 24 hours.',
+                user: loggedInUser
+              }
+            });
+          } else {
+            console.log('Employer verified, going to employer dashboard');
+            navigate('/dashboard/employer', { replace: true });
+          }
+        } else if (userRole === 'CANDIDATE') {
+          console.log('✅ Navigating to CANDIDATE dashboard');
+          navigate('/dashboard/candidate', { replace: true });
+        } else {
+          console.log('❌ Unknown role, defaulting to candidate dashboard. Role was:', userRole);
+          // Default to candidate dashboard for unknown roles
+          navigate('/dashboard/candidate', { replace: true });
+        }
+      }
     } catch (err: any) {
       setErrors({ form: err.message || 'Login failed. Please check your credentials.' });
     } finally {
@@ -66,15 +121,35 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
     };
 
     try {
-      await register(userData);
-      // Mark success and redirect to login to show a success message
-      localStorage.setItem('registrationSuccess', '1');
-      onNavigate('login');
+      const registeredUser = await register(userData);
+      // For candidates and admins, skip Aadhaar verification and go directly to login
+      if (userRole === 'candidate' || userRole === 'admin') {
+        localStorage.setItem('registrationSuccess', 'true');
+        navigate('/login');
+      } else {
+        // For employers, redirect to Aadhaar verification page with the new user's ID
+        navigate('/aadhaar-verification', { 
+          state: { 
+            employerId: registeredUser.id, 
+            email: userData.email,
+            name: userData.name,
+            companyName: userData.companyName
+          } 
+        });
+      }
     } catch (err: any) {
-      if (err.errors) {
+      // Handle specific error cases
+      if (err.message && (err.message.includes('already registered') || err.message.includes('Please login instead'))) {
+        // For all users with existing email, show helpful message with login option
+        setErrors({ 
+          form: 'This email is already registered. Please login instead.',
+          loginHint: 'Click here to login with your existing account'
+        });
+      } else if (err.errors) {
+        // Handle structured validation errors from the backend
         setErrors(err.errors);
       } else {
-        setErrors({ form: err.message || 'Registration failed. Please try again.' });
+        setErrors({ form: err.message || 'An unknown registration error occurred.' });
       }
     } finally {
       setLoading(false);
@@ -91,10 +166,16 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
           </p>
         </div>
 
-        <Tabs defaultValue={mode} className="w-full">
+        <Tabs value={mode} onValueChange={(value) => {
+          if (value === 'login') {
+            onNavigate('login');
+          } else if (value === 'register') {
+            onNavigate('register');
+          }
+        }} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login" onClick={() => onNavigate('login')}>Login</TabsTrigger>
-            <TabsTrigger value="register" onClick={() => onNavigate('register')}>Register</TabsTrigger>
+            <TabsTrigger value="login">Login</TabsTrigger>
+            <TabsTrigger value="register">Register</TabsTrigger>
           </TabsList>
 
           <TabsContent value="login" className="space-y-4 mt-6">
@@ -272,7 +353,21 @@ export function AuthPage({ mode, onNavigate }: AuthPageProps) {
                 </div>
               </div>
 
-              {errors.form && <p className="text-red-500 text-sm">{errors.form}</p>}
+              {errors.form && (
+                <div className="text-center">
+                  <p className="text-red-500 text-sm mb-2">{errors.form}</p>
+                  {errors.loginHint && (
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => onNavigate('login')}
+                      className="text-sm"
+                    >
+                      {errors.loginHint}
+                    </Button>
+                  )}
+                </div>
+              )}
               <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
                 {loading ? 'Creating Account...' : 'Create Account'}
               </Button>

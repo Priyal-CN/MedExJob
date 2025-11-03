@@ -63,15 +63,23 @@ public class SecurityConfig {
                 // Public endpoints
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/jobs/upload").permitAll()
+                .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/employers/kyc-submission").permitAll()
+                .requestMatchers(HttpMethod.OPTIONS, "/api/employers/kyc-submission").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/employers/verification-requests").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/employers/verification-requests/pending-count").permitAll()
+                .requestMatchers(HttpMethod.PUT, "/api/employers/*/verification").permitAll()
                 // Admin-only endpoints
                 .requestMatchers(HttpMethod.POST, "/api/jobs").permitAll()
-                .requestMatchers(HttpMethod.PUT, "/api/jobs/**").hasAuthority("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/jobs/**").hasAuthority("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/jobs/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/jobs/**").hasRole("ADMIN")
                 // Application endpoints
                 .requestMatchers(HttpMethod.POST, "/api/applications").authenticated() // Any logged-in user can apply
-                .requestMatchers(HttpMethod.GET, "/api/applications").hasAuthority("ADMIN") // Only admin can list all
-                .requestMatchers(HttpMethod.PUT, "/api/applications/**/status").hasAuthority("ADMIN") // Only admin can update status
-                .requestMatchers(HttpMethod.DELETE, "/api/applications/**").hasAuthority("ADMIN") // Only admin can delete
+                .requestMatchers(HttpMethod.GET, "/api/applications/my").authenticated() // Candidate can view own applications
+                .requestMatchers(HttpMethod.GET, "/api/applications").hasRole("ADMIN") // Only admin can list all
+                .requestMatchers(HttpMethod.PUT, "/api/applications/**/status").hasRole("ADMIN") // Only admin can update status
+                .requestMatchers(HttpMethod.DELETE, "/api/applications/**").hasRole("ADMIN") // Only admin can delete
                 .requestMatchers("/api/analytics/**").permitAll()
                 .requestMatchers("/api/actuator/**").permitAll()
                 .requestMatchers("/api/health").permitAll()

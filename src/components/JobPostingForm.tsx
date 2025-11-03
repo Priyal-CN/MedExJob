@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Save, Eye, MapPin, Briefcase, GraduationCap, DollarSign, Calendar, FileText, Building2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -9,11 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { JobCategory, JobSector } from '../types';
+import { uploadFile } from '../api/jobs';
 
 interface JobPostingFormProps {
   onCancel: () => void; // Renamed for clarity when used in a dialog
   onSave: (jobData: JobFormData) => void; // Made onSave required
   initialData?: Partial<JobFormData>; // Added for editing
+  forceSubmit?: boolean; // Allow bypassing validation when editing
 }
 
 interface JobFormData {
@@ -28,6 +30,7 @@ interface JobFormData {
   speciality: string;
   dutyType: 'full_time' | 'part_time' | 'contract';
   numberOfPosts: number;
+  gender?: string;
   salary: string;
   description: string;
   lastDate: string;
@@ -36,12 +39,13 @@ interface JobFormData {
   contactEmail: string;
   contactPhone: string;
   pdfUrl?: string;
+  imageUrl?: string;
   applyLink?: string;
-  pdfFile?: File;
-  imageFile?: File;
+  pdfFile?: File | null;
+  imageFile?: File | null;
 }
 
-export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingFormProps) {
+export function JobPostingForm({ onCancel, onSave, initialData, forceSubmit }: JobPostingFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<JobFormData>({
     title: '',
@@ -55,14 +59,20 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
     speciality: '',
     dutyType: 'full_time',
     numberOfPosts: 1,
+    gender: '',
     salary: '',
     description: '',
     lastDate: '',
     requirements: '',
     benefits: '',
     contactEmail: '',
-    contactPhone: ''
+    contactPhone: '',
+    pdfFile: null,
+    imageFile: null
   });
+
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | undefined>(undefined);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | undefined>(undefined);
 
   const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100; // Calculate progress based on current step
@@ -83,16 +93,106 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
   ];
 
   // Initialize form data with initialData if provided (for editing)
-  useState(() => { // Use useState initializer for initial data
+  useEffect(() => {
     if (initialData) {
-      setFormData(prev => ({ ...prev, ...initialData }));
+      console.log('Initializing form with data:', initialData);
+      
+      // Ensure all fields have defined values to prevent controlled/uncontrolled input warnings
+      const sanitizedData = {
+        title: initialData.title ?? '',
+        organization: initialData.organization ?? '',
+        sector: initialData.sector ?? 'private',
+        category: initialData.category ?? 'Medical Officer',
+        location: initialData.location ?? '',
+        qualification: initialData.qualification ?? '',
+        experience: initialData.experience ?? '',
+        experienceLevel: initialData.experienceLevel ?? 'entry',
+        speciality: initialData.speciality ?? '',
+        dutyType: initialData.dutyType ?? 'full_time',
+        numberOfPosts: initialData.numberOfPosts ?? 1,
+        gender: initialData.gender ?? '',
+        salary: initialData.salary ?? '',
+        description: initialData.description ?? '',
+        lastDate: initialData.lastDate ?? '',
+        requirements: initialData.requirements ?? '',
+        benefits: initialData.benefits ?? '',
+        contactEmail: initialData.contactEmail ?? '',
+        contactPhone: initialData.contactPhone ?? '',
+        pdfUrl: initialData.pdfUrl ?? '',
+        imageUrl: initialData.imageUrl ?? '',
+        applyLink: initialData.applyLink ?? ''
+      };
+      
+      setFormData(prev => ({ ...prev, ...sanitizedData }));
+      
+      // Set preview URLs if they exist
+      if (initialData.pdfUrl) {
+        setPdfPreviewUrl(initialData.pdfUrl);
+      }
+      if (initialData.imageUrl) {
+        setImagePreviewUrl(initialData.imageUrl);
+      }
     }
-  });
+  }, [initialData]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    };
+  }, [pdfPreviewUrl, imagePreviewUrl]);
+
+  // Resolve file URLs to absolute URLs for proper display (for existing URLs when editing)
+  const resolveFileUrl = (url?: string): string => {
+    if (!url) return '';
+
+    // 1. If it's already a full absolute URL or blob URL, return it as is
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
+      return url;
+    }
+
+    // 2. Get the API base URL from the environment
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
+
+    // 3. Handle /uploads/ paths - convert to absolute backend URL
+    // Backend serves files via /uploads/** through WebConfig
+    if (url.startsWith('/uploads/')) {
+      const base = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
+      return `${base}${url}`;
+    }
+
+    // 4. Handle /api/jobs/files/ paths (alternative endpoint)
+    if (url.startsWith('/api/jobs/files/')) {
+      const base = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
+      return `${base}${url}`;
+    }
+
+    // 5. For other relative paths, prepend API base
+    const base = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
+    const path = url.startsWith('/') ? url : `/${url}`;
+    
+    // Construct the absolute URL
+    return `${base}${path}`;
+  };
 
   const handleInputChange = (field: keyof JobFormData, value: string | number | undefined) => {
+    // Ensure we never pass undefined to controlled inputs
+    let sanitizedValue: string | number;
+    
+    if (value === undefined || value === null) {
+      // Set appropriate default based on field type
+      if (field === 'numberOfPosts') {
+        sanitizedValue = 1;
+      } else {
+        sanitizedValue = '';
+      }
+    } else {
+      sanitizedValue = value;
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [field]: sanitizedValue
     }));
   };
 
@@ -108,11 +208,35 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
     }
   };
 
-  const handleSubmit = () => {
-    // In a real app, this would save the job and send for approval
-    console.log('Job data:', formData);
-    if (onSave) {
-      onSave(formData);
+  const handleSubmit = async () => {
+    try {
+      // Upload files first
+      let pdfUrl = formData.pdfUrl;
+      let imageUrl = formData.imageUrl;
+
+      if (formData.pdfFile) {
+        const pdfResponse = await uploadFile(formData.pdfFile);
+        pdfUrl = pdfResponse.url;
+      }
+
+      if (formData.imageFile) {
+        const imageResponse = await uploadFile(formData.imageFile);
+        imageUrl = imageResponse.url;
+      }
+
+      // Prepare job data with uploaded URLs
+      const jobData = {
+        ...formData,
+        pdfUrl,
+        imageUrl,
+      };
+
+      if (onSave) {
+        onSave(jobData);
+      }
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      // Handle error - maybe show a toast or alert
     }
   };
 
@@ -121,7 +245,7 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
       case 1:
         return formData.title && formData.organization && formData.category && formData.location;
       case 2:
-        return formData.qualification && formData.experience && formData.numberOfPosts > 0;
+        return formData.qualification;
       case 3:
         return formData.description && formData.lastDate;
       case 4:
@@ -163,7 +287,7 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
 
         <div>
           <Label htmlFor="sector">Job Sector *</Label>
-          <Select value={formData.sector} onValueChange={(value: JobSector) => handleInputChange('sector', value)}>
+          <Select value={formData.sector || 'private'} onValueChange={(value: JobSector) => handleInputChange('sector', value)}>
             <SelectTrigger className="mt-1">
               <SelectValue />
             </SelectTrigger>
@@ -176,7 +300,7 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
 
         <div>
           <Label htmlFor="category">Job Category *</Label>
-          <Select value={formData.category} onValueChange={(value: JobCategory) => handleInputChange('category', value)}>
+          <Select value={formData.category || 'Medical Officer'} onValueChange={(value: JobCategory) => handleInputChange('category', value)}>
             <SelectTrigger className="mt-1">
               <SelectValue />
             </SelectTrigger>
@@ -192,7 +316,7 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
 
         <div className="md:col-span-2">
           <Label htmlFor="location">Location *</Label>
-          <Select value={formData.location} onValueChange={(value: string) => handleInputChange('location', value)}>
+          <Select value={formData.location || ''} onValueChange={(value: string) => handleInputChange('location', value)}>
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Select location" />
             </SelectTrigger>
@@ -229,7 +353,7 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
         </div>
 
         <div>
-          <Label htmlFor="experience">Experience Required *</Label>
+          <Label htmlFor="experience">Experience Required</Label>
           <Input
             id="experience"
             placeholder="e.g., 2-5 years"
@@ -241,7 +365,7 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
 
         <div>
           <Label htmlFor="experienceLevel">Experience Level</Label>
-          <Select value={formData.experienceLevel} onValueChange={(value: 'entry' | 'mid' | 'senior' | 'executive') => handleInputChange('experienceLevel', value)}>
+          <Select value={formData.experienceLevel || 'entry'} onValueChange={(value: 'entry' | 'mid' | 'senior' | 'executive') => handleInputChange('experienceLevel', value)}>
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Select experience level" />
             </SelectTrigger>
@@ -267,7 +391,7 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
 
         <div>
           <Label htmlFor="dutyType">Duty Type</Label>
-          <Select value={formData.dutyType} onValueChange={(value: 'full_time' | 'part_time' | 'contract') => handleInputChange('dutyType', value)}>
+          <Select value={formData.dutyType || 'full_time'} onValueChange={(value: 'full_time' | 'part_time' | 'contract') => handleInputChange('dutyType', value)}>
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Select duty type" />
             </SelectTrigger>
@@ -280,7 +404,7 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
         </div>
 
         <div>
-          <Label htmlFor="numberOfPosts">Number of Posts *</Label>
+          <Label htmlFor="numberOfPosts">Number of Posts</Label>
           <Input
             id="numberOfPosts"
             type="number"
@@ -290,6 +414,21 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
             onChange={(e) => handleInputChange('numberOfPosts', parseInt(e.target.value) || 1)}
             className="mt-1"
           />
+        </div>
+
+        <div>
+          <Label htmlFor="gender">Gender</Label>
+          <Select value={formData.gender || ''} onValueChange={(value: string) => handleInputChange('gender', value)}>
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select gender preference" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="any">Any</SelectItem>
+              <SelectItem value="male">Male</SelectItem>
+              <SelectItem value="female">Female</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="md:col-span-2">
@@ -403,10 +542,27 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
             id="pdfFile"
             type="file"
             accept=".pdf"
-            onChange={(e) => setFormData(prev => ({ ...prev, pdfFile: e.target.files?.[0] || undefined }))}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              setFormData(prev => ({ ...prev, pdfFile: file }));
+              if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+              setPdfPreviewUrl(file ? URL.createObjectURL(file) : undefined);
+            }}
             className="mt-1"
           />
           <p className="text-xs text-gray-500 mt-1">Upload official notification PDF or job description (optional)</p>
+          {(pdfPreviewUrl || formData.pdfUrl) && (
+            <div className="mt-3">
+              <a
+                href={pdfPreviewUrl || resolveFileUrl(formData.pdfUrl)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline text-sm"
+              >
+                View selected PDF
+              </a>
+            </div>
+          )}
         </div>
 
         <div className="md:col-span-2">
@@ -415,10 +571,24 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
             id="imageFile"
             type="file"
             accept="image/*"
-            onChange={(e) => setFormData(prev => ({ ...prev, imageFile: e.target.files?.[0] || undefined }))}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              setFormData(prev => ({ ...prev, imageFile: file }));
+              if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+              setImagePreviewUrl(file ? URL.createObjectURL(file) : undefined);
+            }}
             className="mt-1"
           />
           <p className="text-xs text-gray-500 mt-1">Upload hospital/organization image (optional)</p>
+          {(imagePreviewUrl || formData.imageUrl) && (
+            <a href={imagePreviewUrl || formData.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block">
+              <img
+                src={imagePreviewUrl || formData.imageUrl}
+                alt="Selected preview"
+                className="max-h-40 rounded border hover:opacity-80 transition-opacity"
+              />
+            </a>
+          )}
         </div>
       </div>
 
@@ -543,7 +713,7 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
             {currentStep < totalSteps ? (
               <Button 
                 onClick={nextStep}
-                disabled={!isStepValid(currentStep)}
+                disabled={!forceSubmit && !isStepValid(currentStep)}
               >
                 Next
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -551,11 +721,11 @@ export function JobPostingForm({ onCancel, onSave, initialData }: JobPostingForm
             ) : (
               <Button 
                 onClick={handleSubmit}
-                disabled={!isStepValid(currentStep)}
+                disabled={!forceSubmit && !isStepValid(currentStep)}
                 className="bg-green-600 hover:bg-green-700"
               >
                 <Eye className="w-4 h-4 mr-2" />
-                Post Job
+                {initialData ? 'Update Job' : 'Post Job'}
               </Button>
             )}
           </div>

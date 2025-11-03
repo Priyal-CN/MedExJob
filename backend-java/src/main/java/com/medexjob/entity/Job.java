@@ -52,9 +52,8 @@ public class Job {
     @Column(name = "qualification", columnDefinition = "TEXT", nullable = false)
     private String qualification;
     
-    @NotBlank
     @Size(max = 100)
-    @Column(name = "experience", nullable = false)
+    @Column(name = "experience", nullable = true)
     private String experience;
 
     @Enumerated(EnumType.STRING)
@@ -68,7 +67,7 @@ public class Job {
     @Column(name = "duty_type")
     private DutyType dutyType;
 
-    @Column(name = "number_of_posts", nullable = false)
+    @Column(name = "number_of_posts", nullable = true)
     private Integer numberOfPosts = 1;
     
     @Size(max = 100)
@@ -99,7 +98,11 @@ public class Job {
     @Size(max = 500)
     @Column(name = "pdf_url")
     private String pdfUrl;
-    
+
+    @Size(max = 500)
+    @Column(name = "image_url")
+    private String imageUrl;
+
     @Size(max = 500)
     @Column(name = "apply_link")
     private String applyLink;
@@ -319,15 +322,23 @@ public class Job {
     public String getPdfUrl() {
         return pdfUrl;
     }
-    
+
     public void setPdfUrl(String pdfUrl) {
         this.pdfUrl = pdfUrl;
     }
-    
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
     public String getApplyLink() {
         return applyLink;
     }
-    
+
     public void setApplyLink(String applyLink) {
         this.applyLink = applyLink;
     }

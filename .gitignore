@@ -75,3 +75,8 @@ jspm_packages/
 
 # DynamoDB Local files
 .dynamodb/
+
+# H2 Database files
+backend-java/data/
+*.mv.db
+*.trace.db

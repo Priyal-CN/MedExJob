@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bell, Mail, MessageSquare, Check, X, Trash2, Settings, Filter } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -7,8 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
-import { mockNotifications } from '../data/mockData';
 import { Notification } from '../types';
+import { fetchJobs } from '../api/jobs';
 
 interface NotificationCenterProps {
   userId: string;
@@ -21,14 +21,47 @@ export function NotificationCenter({ userId, userRole }: NotificationCenterProps
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [smsNotifications, setSmsNotifications] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(true);
+  const [prefJobAlerts, setPrefJobAlerts] = useState(true);
+  const [prefApplicationUpdates, setPrefApplicationUpdates] = useState(true);
+  const [prefInterviewScheduling, setPrefInterviewScheduling] = useState(true);
+  const [prefSubscriptionUpdates, setPrefSubscriptionUpdates] = useState(true);
+  const [activeTab, setActiveTab] = useState<'notifications' | 'settings'>('notifications');
 
   useEffect(() => {
-    // If admin, show all notifications. Otherwise, filter for the current user.
-    const userNotifications = userRole === 'admin'
-      ? mockNotifications
-      : mockNotifications.filter(n => n.userId === userId);
-    setNotifications(userNotifications);
-  }, [userId]);
+    // Load preferences from localStorage
+    try {
+      const raw = localStorage.getItem('notification_prefs');
+      if (raw) {
+        const prefs = JSON.parse(raw);
+        setEmailNotifications(!!prefs.email);
+        setSmsNotifications(!!prefs.sms);
+        setPushNotifications(!!prefs.push);
+        setPrefJobAlerts(!!prefs.types?.job_alert);
+        setPrefApplicationUpdates(!!prefs.types?.application_update);
+        setPrefInterviewScheduling(!!prefs.types?.interview_scheduled);
+        setPrefSubscriptionUpdates(!!prefs.types?.subscription);
+      }
+    } catch {}
+
+    // Build dynamic notifications from latest jobs for job alerts
+    (async () => {
+      try {
+        const jobsResp = await fetchJobs({ page: 0, size: 20, sort: 'createdAt,desc' });
+        const jobAlerts: Notification[] = (jobsResp.content || []).map((j: any) => ({
+          id: `job-${j.id}`,
+          userId: userId,
+          type: 'job_alert',
+          message: `New job posted: ${j.title} at ${j.organization || 'an employer'}`,
+          read: false,
+          createdAt: j.postedDate || new Date().toISOString(),
+          relatedJobId: j.id,
+        }));
+        setNotifications(jobAlerts);
+      } catch {
+        setNotifications([]);
+      }
+    })();
+  }, [userId, userRole]);
 
   const filteredNotifications = notifications.filter(notification => {
     if (filter === 'all') return true;
@@ -54,6 +87,21 @@ export function NotificationCenter({ userId, userRole }: NotificationCenterProps
 
   const deleteNotification = (notificationId: string) => {
     setNotifications(prev => prev.filter(n => n.id !== notificationId));
+  };
+
+  const savePreferences = () => {
+    const prefs = {
+      email: emailNotifications,
+      sms: smsNotifications,
+      push: pushNotifications,
+      types: {
+        job_alert: prefJobAlerts,
+        application_update: prefApplicationUpdates,
+        interview_scheduled: prefInterviewScheduling,
+        subscription: prefSubscriptionUpdates,
+      },
+    };
+    localStorage.setItem('notification_prefs', JSON.stringify(prefs));
   };
 
   const getNotificationIcon = (type: string) => {
@@ -122,7 +170,7 @@ export function NotificationCenter({ userId, userRole }: NotificationCenterProps
         <div className="grid md:grid-cols-4 gap-6">
           {/* Main Content */}
           <div className="md:col-span-3">
-            <Tabs defaultValue="notifications" className="w-full">
+            <Tabs defaultValue={activeTab} value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="w-full">
               <TabsList>
                 <TabsTrigger value="notifications">All Notifications</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -280,34 +328,34 @@ export function NotificationCenter({ userId, userRole }: NotificationCenterProps
                           <p className="text-sm font-medium">Job Alerts</p>
                           <p className="text-xs text-gray-600">New jobs matching your criteria</p>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch checked={prefJobAlerts} onCheckedChange={setPrefJobAlerts} />
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium">Application Updates</p>
                           <p className="text-xs text-gray-600">Status changes on your applications</p>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch checked={prefApplicationUpdates} onCheckedChange={setPrefApplicationUpdates} />
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium">Interview Scheduling</p>
                           <p className="text-xs text-gray-600">Interview invitations and updates</p>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch checked={prefInterviewScheduling} onCheckedChange={setPrefInterviewScheduling} />
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium">Subscription Updates</p>
                           <p className="text-xs text-gray-600">Billing and subscription notifications</p>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch checked={prefSubscriptionUpdates} onCheckedChange={setPrefSubscriptionUpdates} />
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-8 pt-6 border-t">
-                    <Button className="w-full">
+                    <Button className="w-full" onClick={savePreferences}>
                       <Settings className="w-4 h-4 mr-2" />
                       Save Preferences
                     </Button>
@@ -348,15 +396,15 @@ export function NotificationCenter({ userId, userRole }: NotificationCenterProps
             <Card className="p-6">
               <h3 className="text-lg text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start" onClick={() => { setFilter('job_alert'); setActiveTab('notifications'); }}>
                   <Bell className="w-4 h-4 mr-2" />
                   Create Job Alert
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start" onClick={() => setActiveTab('settings')}>
                   <Settings className="w-4 h-4 mr-2" />
                   Notification Settings
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start" onClick={() => setNotifications(prev => prev.filter(n => !n.read))}>
                   <Trash2 className="w-4 h-4 mr-2" />
                   Clear All Read
                 </Button>

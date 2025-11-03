@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Bell, MapPin, Search, Filter, Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Bell, MapPin, Search, Filter, Edit, Trash2, ToggleLeft, ToggleRight, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -29,57 +29,36 @@ interface JobAlert {
   matches: number;
 }
 
-const mockJobAlerts: JobAlert[] = [
-  {
-    id: 'alert-1',
-    name: 'Cardiology Jobs in Delhi',
-    keywords: ['cardiologist', 'cardiology', 'heart'],
-    locations: ['New Delhi', 'Gurgaon', 'Noida'],
-    categories: ['Specialist', 'Senior Resident'],
-    sectors: ['private', 'government'],
-    salaryRange: { min: 100000, max: 500000 },
-    experience: '2-5 years',
-    frequency: 'daily',
-    active: true,
-    createdAt: '2025-10-01',
-    lastSent: '2025-10-14',
-    matches: 12
-  },
-  {
-    id: 'alert-2',
-    name: 'Government Medical Officer',
-    keywords: ['medical officer', 'government', 'health'],
-    locations: ['Rajasthan', 'Uttar Pradesh', 'Madhya Pradesh'],
-    categories: ['Medical Officer'],
-    sectors: ['government'],
-    salaryRange: { min: 50000, max: 200000 },
-    experience: '0-3 years',
-    frequency: 'weekly',
-    active: true,
-    createdAt: '2025-09-15',
-    lastSent: '2025-10-10',
-    matches: 8
-  },
-  {
-    id: 'alert-3',
-    name: 'Nursing Jobs Mumbai',
-    keywords: ['nurse', 'nursing', 'staff nurse'],
-    locations: ['Mumbai', 'Thane', 'Navi Mumbai'],
-    categories: ['Paramedical / Nursing'],
-    sectors: ['private'],
-    salaryRange: { min: 30000, max: 100000 },
-    experience: '1-3 years',
-    frequency: 'instant',
-    active: false,
-    createdAt: '2025-10-05',
-    matches: 5
-  }
-];
-
-export function JobAlerts() {
-  const [alerts, setAlerts] = useState<JobAlert[]>(mockJobAlerts);
+export function JobAlerts({ onNavigate }: { onNavigate: (page: string) => void }) {
+  const [alerts, setAlerts] = useState<JobAlert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingAlert, setEditingAlert] = useState<JobAlert | null>(null);
+
+  // Load job alerts on component mount
+  useEffect(() => {
+    loadJobAlerts();
+  }, []);
+
+  const loadJobAlerts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // TODO: Replace with actual API call when backend is ready
+      // const response = await fetchJobAlerts();
+      // setAlerts(response.data || []);
+      
+      // For now, show empty state
+      setAlerts([]);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load job alerts');
+      console.error('Error loading job alerts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const jobCategories: JobCategory[] = [
     'Junior Resident',
@@ -97,16 +76,38 @@ export function JobAlerts() {
     'Rajasthan', 'Uttar Pradesh', 'Madhya Pradesh', 'Gujarat', 'Karnataka', 'Tamil Nadu'
   ];
 
-  const toggleAlert = (alertId: string) => {
-    setAlerts(prev => 
-      prev.map(alert => 
-        alert.id === alertId ? { ...alert, active: !alert.active } : alert
-      )
-    );
+  const toggleAlert = async (alertId: string) => {
+    try {
+      // TODO: Replace with actual API call when backend is ready
+      // await updateJobAlert(alertId, { active: !alerts.find(a => a.id === alertId)?.active });
+      
+      // For now, update local state
+      setAlerts(prev => 
+        prev.map(alert => 
+          alert.id === alertId ? { ...alert, active: !alert.active } : alert
+        )
+      );
+    } catch (err: any) {
+      console.error('Error toggling alert:', err);
+      alert('Failed to update alert status');
+    }
   };
 
-  const deleteAlert = (alertId: string) => {
-    setAlerts(prev => prev.filter(alert => alert.id !== alertId));
+  const deleteAlert = async (alertId: string) => {
+    if (!window.confirm('Are you sure you want to delete this job alert?')) {
+      return;
+    }
+
+    try {
+      // TODO: Replace with actual API call when backend is ready
+      // await deleteJobAlert(alertId);
+      
+      // For now, update local state
+      setAlerts(prev => prev.filter(alert => alert.id !== alertId));
+    } catch (err: any) {
+      console.error('Error deleting alert:', err);
+      alert('Failed to delete job alert');
+    }
   };
 
   const getFrequencyColor = (frequency: string) => {
@@ -129,6 +130,42 @@ export function JobAlerts() {
     return `₹${min.toLocaleString()} - ₹${max.toLocaleString()} PA`;
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+              <p className="text-gray-600">Loading job alerts...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="text-red-600 mb-4">
+                <Bell className="w-12 h-12 mx-auto mb-2" />
+                <p className="text-lg font-medium">Error Loading Job Alerts</p>
+                <p className="text-sm text-gray-600 mt-1">{error}</p>
+              </div>
+              <Button onClick={loadJobAlerts} variant="outline">
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -150,9 +187,19 @@ export function JobAlerts() {
                 <DialogTitle>Create Job Alert</DialogTitle>
               </DialogHeader>
               <CreateAlertForm 
-                onSave={(alert) => {
-                  setAlerts(prev => [...prev, { ...alert, id: `alert-${Date.now()}`, matches: 0 }]);
-                  setIsCreateDialogOpen(false);
+                onSave={async (alert) => {
+                  try {
+                    // TODO: Replace with actual API call when backend is ready
+                    // const newAlert = await createJobAlert(alert);
+                    // setAlerts(prev => [...prev, newAlert]);
+                    
+                    // For now, add to local state
+                    setAlerts(prev => [...prev, { ...alert, id: `alert-${Date.now()}`, matches: 0 }]);
+                    setIsCreateDialogOpen(false);
+                  } catch (err: any) {
+                    console.error('Error creating alert:', err);
+                    alert('Failed to create job alert');
+                  }
                 }}
                 onCancel={() => setIsCreateDialogOpen(false)}
               />
@@ -193,7 +240,13 @@ export function JobAlerts() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500 mb-1">This Week</p>
-                <p className="text-3xl text-gray-900">3</p>
+                <p className="text-3xl text-gray-900">
+                  {alerts.filter(alert => {
+                    const weekAgo = new Date();
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    return new Date(alert.createdAt) > weekAgo;
+                  }).length}
+                </p>
               </div>
               <Filter className="w-8 h-8 text-orange-600" />
             </div>
@@ -337,7 +390,7 @@ export function JobAlerts() {
 }
 
 interface CreateAlertFormProps {
-  onSave: (alert: Omit<JobAlert, 'id' | 'matches'>) => void;
+  onSave: (alert: Omit<JobAlert, 'id' | 'matches'>) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -353,6 +406,7 @@ function CreateAlertForm({ onSave, onCancel }: CreateAlertFormProps) {
     experience: '',
     frequency: 'daily' as 'daily' | 'weekly' | 'instant'
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const jobCategories: JobCategory[] = [
     'Junior Resident',
@@ -370,26 +424,37 @@ function CreateAlertForm({ onSave, onCancel }: CreateAlertFormProps) {
     'Rajasthan', 'Uttar Pradesh', 'Madhya Pradesh', 'Gujarat', 'Karnataka', 'Tamil Nadu'
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const alert = {
-      name: formData.name,
-      keywords: formData.keywords.split(',').map(k => k.trim()).filter(k => k),
-      locations: formData.locations,
-      categories: formData.categories,
-      sectors: formData.sectors,
-      salaryRange: {
-        min: parseInt(formData.salaryMin) || 0,
-        max: parseInt(formData.salaryMax) || 1000000
-      },
-      experience: formData.experience,
-      frequency: formData.frequency,
-      active: true,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
+    if (isSubmitting) return;
     
-    onSave(alert);
+    try {
+      setIsSubmitting(true);
+      
+      const alert = {
+        name: formData.name,
+        keywords: formData.keywords.split(',').map(k => k.trim()).filter(k => k),
+        locations: formData.locations,
+        categories: formData.categories,
+        sectors: formData.sectors,
+        salaryRange: {
+          min: parseInt(formData.salaryMin) || 0,
+          max: parseInt(formData.salaryMax) || 1000000
+        },
+        experience: formData.experience,
+        frequency: formData.frequency,
+        active: true,
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+      
+      await onSave(alert);
+    } catch (err: any) {
+      console.error('Error creating alert:', err);
+      alert('Failed to create job alert');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const toggleLocation = (location: string) => {
@@ -549,15 +614,20 @@ function CreateAlertForm({ onSave, onCancel }: CreateAlertFormProps) {
       </div>
 
       <div className="flex gap-3 pt-4">
-        <Button type="submit" className="flex-1">
-          Create Alert
+        <Button type="submit" className="flex-1" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Creating...
+            </>
+          ) : (
+            'Create Alert'
+          )}
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
           Cancel
         </Button>
       </div>
     </form>
   );
 }
-
-

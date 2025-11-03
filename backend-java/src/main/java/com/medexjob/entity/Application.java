@@ -25,8 +25,9 @@ public class Application {
     @JoinColumn(name = "job_id", nullable = false)
     private Job job;
 
-    @Column(name = "candidate_id")
-    private UUID candidateId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "candidate_id")
+    private User candidate;
 
     @NotBlank
     @Size(max = 100)
@@ -69,9 +70,9 @@ public class Application {
     // Constructors
     public Application() {}
 
-    public Application(Job job, UUID candidateId, String candidateName, String candidateEmail, String candidatePhone) {
+    public Application(Job job, User candidate, String candidateName, String candidateEmail, String candidatePhone) {
         this.job = job;
-        this.candidateId = candidateId;
+        this.candidate = candidate;
         this.candidateName = candidateName;
         this.candidateEmail = candidateEmail;
         this.candidatePhone = candidatePhone;
@@ -94,12 +95,12 @@ public class Application {
         this.job = job;
     }
 
-    public UUID getCandidateId() {
-        return candidateId;
+    public User getCandidate() {
+        return candidate;
     }
 
-    public void setCandidateId(UUID candidateId) {
-        this.candidateId = candidateId;
+    public void setCandidate(User candidate) {
+        this.candidate = candidate;
     }
 
     public String getCandidateName() {

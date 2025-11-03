@@ -2,6 +2,7 @@ package com.medexjob.controller;
 
 import com.medexjob.entity.Application;
 import com.medexjob.entity.Job;
+import com.medexjob.entity.User;
 import com.medexjob.repository.ApplicationRepository;
 import com.medexjob.repository.JobRepository;
 import org.springframework.data.domain.Page;
@@ -10,7 +11,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.medexjob.repository.UserRepository; // Import UserRepository
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -22,16 +27,18 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/applications")
-@CrossOrigin(origins = "http://localhost:3000")
+// @CrossOrigin(origins = "http://localhost:3000") // Removed: Handled globally in WebSecurityConfig
 public class ApplicationController {
 
     private final ApplicationRepository applicationRepository;
     private final JobRepository jobRepository;
+    private final UserRepository userRepository; // Inject UserRepository
     private final Path uploadPath = Paths.get("uploads");
 
-    public ApplicationController(ApplicationRepository applicationRepository, JobRepository jobRepository) {
+    public ApplicationController(ApplicationRepository applicationRepository, JobRepository jobRepository, UserRepository userRepository) {
         this.applicationRepository = applicationRepository;
         this.jobRepository = jobRepository;
+        this.userRepository = userRepository;
         try {
             Files.createDirectories(uploadPath);
         } catch (IOException e) {
@@ -39,9 +46,39 @@ public class ApplicationController {
         }
     }
 
+    @GetMapping("/my")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> myApplications(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            @RequestParam(value = "sort", defaultValue = "appliedDate,desc") String sort
+    ) {
+        String[] sortParts = sort.split(",");
+        Sort.Direction dir = (sortParts.length > 1 && sortParts[1].equalsIgnoreCase("asc")) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(dir, sortParts[0]));
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String email = (auth != null && auth.isAuthenticated()) ? auth.getName() : null;
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(401).build();
+        }
+
+        // Query by candidateEmail field directly with JOIN FETCH
+        Page<Application> result = applicationRepository.findByCandidateEmail(email, pageable);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("content", result.getContent().stream().map(this::toResponse).collect(Collectors.toList()));
+        body.put("page", result.getNumber());
+        body.put("size", result.getSize());
+        body.put("totalElements", result.getTotalElements());
+        body.put("totalPages", result.getTotalPages());
+        return ResponseEntity.ok(body);
+    }
+
     @PostMapping
     public ResponseEntity<Map<String, Object>> apply(
             @RequestParam("jobId") UUID jobId,
+            @RequestParam(value = "candidateId", required = false) UUID candidateId,
             @RequestParam("candidateName") String candidateName,
             @RequestParam("candidateEmail") String candidateEmail,
             @RequestParam("candidatePhone") String candidatePhone,
@@ -50,8 +87,17 @@ public class ApplicationController {
     ) {
         return jobRepository.findById(jobId)
                 .map(job -> {
+                    // Manually check for candidateId and throw a clear error
+                    if (candidateId == null) {
+                        throw new IllegalArgumentException("candidateId is a required parameter.");
+                    }
+
                     try {
                         Application application = new Application();
+                        // Fetch the User by candidateId and link it
+                        User candidate = userRepository.findById(candidateId)
+                                .orElseThrow(() -> new RuntimeException("Candidate not found with ID: " + candidateId));
+                        application.setCandidate(candidate); // Set the User object
                         application.setJob(job);
                         application.setCandidateName(candidateName);
                         application.setCandidateEmail(candidateEmail);
@@ -90,9 +136,11 @@ public class ApplicationController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> list(
             @RequestParam(value = "jobId", required = false) UUID jobId,
             @RequestParam(value = "candidateId", required = false) UUID candidateId,
+            @RequestParam(value = "candidateEmail", required = false) String candidateEmail,
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "page", defaultValue = "0") int page,
@@ -108,24 +156,28 @@ public class ApplicationController {
         if (jobId != null) {
             if (status != null) {
                 Application.ApplicationStatus appStatus = parseStatus(status);
-                result = applicationRepository.findByJobIdAndStatus(jobId, appStatus, pageable);
+                result = applicationRepository.findByJobIdAndStatusWithDetails(jobId, appStatus, pageable);
             } else {
-                result = applicationRepository.findByJobId(jobId, pageable);
+                result = applicationRepository.findByJobIdWithDetails(jobId, pageable);
             }
-        } else if (candidateId != null) {
+        } else if (candidateEmail != null && !candidateEmail.isBlank()) {
+            // Query by candidateEmail field directly with JOIN FETCH
+            result = applicationRepository.findByCandidateEmail(candidateEmail, pageable);
+        } else if (candidateId != null) { // Admin can filter by candidateId
             if (status != null) {
                 Application.ApplicationStatus appStatus = parseStatus(status);
-                result = applicationRepository.findByCandidateIdAndStatus(candidateId, appStatus, pageable);
+                result = applicationRepository.findByCandidateIdAndStatusWithDetails(candidateId, appStatus, pageable);
             } else {
-                result = applicationRepository.findByCandidateId(candidateId, pageable);
+                result = applicationRepository.findByCandidateIdWithDetails(candidateId, pageable);
             }
         } else if (status != null) {
             Application.ApplicationStatus appStatus = parseStatus(status);
-            result = applicationRepository.findByStatus(appStatus, pageable);
+            result = applicationRepository.findByStatusWithDetails(appStatus, pageable);
         } else if (search != null && !search.isBlank()) {
-            result = applicationRepository.searchApplications(search.trim(), pageable);
+            result = applicationRepository.searchApplicationsWithDetails(search.trim(), pageable);
         } else {
-            result = applicationRepository.findAll(pageable);
+            // Use the new method with JOIN FETCH for admin view
+            result = applicationRepository.findAllWithDetails(pageable);
         }
 
         Map<String, Object> body = new HashMap<>();
@@ -195,7 +247,7 @@ public class ApplicationController {
         m.put("jobId", app.getJob().getId().toString());
         m.put("jobTitle", app.getJob().getTitle());
         m.put("jobOrganization", app.getJob().getEmployer() != null ? app.getJob().getEmployer().getCompanyName() : "");
-        m.put("candidateId", app.getCandidateId() != null ? app.getCandidateId().toString() : null);
+        m.put("candidateId", app.getCandidate() != null ? app.getCandidate().getId().toString() : null); // Get ID from User object
         m.put("candidateName", app.getCandidateName());
         m.put("candidateEmail", app.getCandidateEmail());
         m.put("candidatePhone", app.getCandidatePhone());

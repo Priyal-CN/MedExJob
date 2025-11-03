@@ -44,15 +44,17 @@ export interface JobPayload {
   category: string;
   location: string;
   qualification: string;
-  experience: string;
+  experience?: string;
   experienceLevel?: 'entry' | 'mid' | 'senior' | 'executive';
   speciality?: string;
   dutyType?: 'full_time' | 'part_time' | 'contract';
   numberOfPosts?: number;
+  gender?: string;
   salary?: string;
   description: string;
   lastDate: string; // yyyy-MM-dd
   pdfUrl?: string;
+  imageUrl?: string;
   applyLink?: string;
   status?: 'active' | 'closed' | 'pending' | 'draft';
   featured?: boolean;
@@ -70,10 +72,26 @@ export async function createJob(payload: JobPayload) {
 }
 
 export async function updateJob(id: string, payload: Partial<JobPayload>) {
+  console.log('Updating job with ID:', id, 'Payload:', payload);
   const res = await apiClient.put(`/api/jobs/${id}`, payload);
+  console.log('Update response:', res.data);
   return res.data;
 }
 
 export async function deleteJob(id: string) {
-  await apiClient.delete(`/api/jobs/${id}`);
+  console.log('Deleting job with ID:', id);
+  const res = await apiClient.delete(`/api/jobs/${id}`);
+  console.log('Delete response:', res);
+  return res;
+}
+
+export async function uploadFile(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await apiClient.post('/api/jobs/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return res.data;
 }

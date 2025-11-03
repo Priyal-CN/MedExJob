@@ -17,12 +17,15 @@ E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\dto\Res
 E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\controller\GlobalExceptionHandler.java
 E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\config\DataSeeder.java
 E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\controller\ApplicationController.java
+E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\controller\UserController.java
 E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\controller\AnalyticsController.java
 E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\repository\EmployerRepository.java
 E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\entity\Employer.java
 E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\service\CustomUserDetailsService.java
 E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\controller\EmployerController.java
+E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\dto\AadhaarVerifyRequest.java
 E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\security\JwtAuthenticationEntryPoint.java
 E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\security\JwtRequestFilter.java
+E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\config\WebConfig.java
 E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\repository\ApplicationRepository.java
 E:\OneDrive\Desktop\MedExJob.com\backend-java\src\main\java\com\medexjob\repository\UserRepository.java

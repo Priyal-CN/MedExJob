@@ -1,3 +1,4 @@
+import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -143,19 +144,19 @@ export function TermsConditionsPage({ onNavigate }: TermsConditionsPageProps) {
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-gray-700 leading-relaxed">Job postings must be accurate and not discriminatory</span>
+                    <span className="text-gray-700 leading-relaxed">Job postings must be accurate, non-discriminatory, and comply with medical advertising laws</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-gray-700 leading-relaxed">You are responsible for verifying candidate qualifications</span>
+                    <span className="text-gray-700 leading-relaxed">You are responsible for verifying candidate qualifications and conducting your own background checks</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-gray-700 leading-relaxed">Subscription fees are non-refundable</span>
+                    <span className="text-gray-700 leading-relaxed">All paid features and job postings must comply with medical advertising regulations</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-gray-700 leading-relaxed">Violation of posting guidelines may result in account suspension</span>
+                    <span className="text-gray-700 leading-relaxed">Violation of posting guidelines may result in account suspension or termination</span>
                   </li>
                 </ul>
               </div>
@@ -165,19 +166,61 @@ export function TermsConditionsPage({ onNavigate }: TermsConditionsPageProps) {
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-gray-700 leading-relaxed">Applications must contain truthful information</span>
+                    <span className="text-gray-700 leading-relaxed">Applications must contain truthful and accurate information</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-gray-700 leading-relaxed">You are responsible for the accuracy of your resume and qualifications</span>
+                    <span className="text-gray-700 leading-relaxed">You are responsible for the accuracy of your resume, qualifications, and certifications</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-gray-700 leading-relaxed">Multiple applications to the same position may be restricted</span>
+                    <span className="text-gray-700 leading-relaxed">Multiple applications to the same position may be restricted to prevent spam</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-gray-700 leading-relaxed">Professional conduct is expected in all communications</span>
+                    <span className="text-gray-700 leading-relaxed">Professional conduct is expected in all communications with employers</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section className="relative">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                <span className="text-green-600 font-bold text-sm">4.5</span>
+              </div>
+              <h2 className="text-2xl text-gray-900 font-semibold">Refund, Billing, and Disputes</h2>
+            </div>
+            <div className="pl-11 space-y-6">
+              <div>
+                <h3 className="text-xl text-green-700 mb-4 font-medium">Refund Policy</h3>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed"><strong>Subscription Fees:</strong> Subscription fees are generally non-refundable, except as required by applicable consumer protection laws</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed"><strong>Service Issues:</strong> If you experience technical issues preventing service use, contact support within 7 days for a refund consideration</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed"><strong>Billing Disputes:</strong> All billing disputes must be raised within 30 days of the charge date</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-xl text-green-700 mb-4 font-medium">Payment Processing</h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed">Payments are processed securely through Razorpay/Stripe</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed">All transactions are subject to our payment processor's terms and conditions</span>
                   </li>
                 </ul>
               </div>
@@ -189,34 +232,103 @@ export function TermsConditionsPage({ onNavigate }: TermsConditionsPageProps) {
               <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                 <span className="text-green-600 font-bold text-sm">5</span>
               </div>
-              <h2 className="text-2xl text-gray-900 font-semibold">Content Guidelines</h2>
+              <h2 className="text-2xl text-gray-900 font-semibold">User Conduct and Content Guidelines</h2>
+            </div>
+            <div className="pl-11 space-y-6">
+              <div>
+                <h3 className="text-xl text-green-700 mb-4 font-medium">Prohibited Content and Activities</h3>
+                <p className="text-gray-700 leading-relaxed mb-4 text-lg">
+                  All content posted on MedExJob.com must comply with our community standards and legal requirements:
+                </p>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed"><strong>Fraudulent Posts:</strong> Strictly prohibited. This includes fake job listings, scam postings, or attempts to defraud job seekers</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed"><strong>Explicit or Inappropriate Content:</strong> No explicit, offensive, or discriminatory content is allowed</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed"><strong>Solicitation of Payments:</strong> Employers are strictly prohibited from soliciting payments from job seekers. No job should require payment from candidates</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed"><strong>Discriminatory Practices:</strong> No discriminatory language or practices based on race, gender, religion, age, disability, or other protected characteristics</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed"><strong>False Information:</strong> No false or misleading information in job postings or applications</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed"><strong>Copyright Violations:</strong> No copyrighted material without proper permission or authorization</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-xl text-green-700 mb-4 font-medium">Ethical and Compliance Requirements</h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed">All paid features and job postings must comply with medical advertising laws and regulations</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed">Content is subject to review by our moderation team and DPO (Data Protection Officer) oversight</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section className="relative">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                <span className="text-green-600 font-bold text-sm">5.5</span>
+              </div>
+              <h2 className="text-2xl text-gray-900 font-semibold">Appeal and Suspension Process</h2>
             </div>
             <div className="pl-11">
               <p className="text-gray-700 leading-relaxed mb-6 text-lg">
-                All content posted on MedExJob.com must comply with our community standards:
+                We have a fair and transparent process for handling account suspensions and appeals:
               </p>
-              <ul className="space-y-3">
-                <li className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                  <span className="text-gray-700 leading-relaxed">No discriminatory language or practices</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                  <span className="text-gray-700 leading-relaxed">No false or misleading information</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                  <span className="text-gray-700 leading-relaxed">No spam or unsolicited communications</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                  <span className="text-gray-700 leading-relaxed">No copyrighted material without permission</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                  <span className="text-gray-700 leading-relaxed">No offensive or inappropriate content</span>
-                </li>
-              </ul>
+              <div className="bg-green-50 rounded-lg p-6 border border-green-200 mb-6">
+                <h3 className="text-lg font-semibold text-green-800 mb-4">Service Level Agreement (SLA)</h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed"><strong>24-Hour Acknowledgment:</strong> All appeals and disputes will be acknowledged within 24 hours of submission</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed"><strong>72-Hour Resolution:</strong> We aim to resolve all appeals and disputes within 72 hours of acknowledgment</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed"><strong>Transparent Process:</strong> You will be informed of the reason for suspension and the steps required for reinstatement</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                <h3 className="text-lg font-semibold text-blue-800 mb-4">Appeal Submission</h3>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed text-sm">Submit appeals through your dashboard or email to medexjob1997@gmail.com</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed text-sm">Include all relevant information and evidence to support your appeal</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700 leading-relaxed text-sm">Our team will review your case and provide a detailed response within the SLA timeframe</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </section>
 
@@ -225,13 +337,36 @@ export function TermsConditionsPage({ onNavigate }: TermsConditionsPageProps) {
               <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                 <span className="text-green-600 font-bold text-sm">6</span>
               </div>
-              <h2 className="text-2xl text-gray-900 font-semibold">Privacy and Data Protection</h2>
+              <h2 className="text-2xl text-gray-900 font-semibold">Privacy, Data Protection, and Legal Transparency</h2>
             </div>
-            <div className="pl-11">
-              <p className="text-gray-700 leading-relaxed text-lg">
-                Your privacy is important to us. Please review our Privacy Policy, which also governs your use of MedExJob.com,
-                to understand our practices regarding the collection and use of your personal information.
-              </p>
+            <div className="pl-11 space-y-6">
+              <div>
+                <p className="text-gray-700 leading-relaxed mb-6 text-lg">
+                  Your privacy is important to us. Please review our Privacy Policy, which also governs your use of MedExJob.com,
+                  to understand our practices regarding the collection and use of your personal information.
+                </p>
+                <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                  <h3 className="text-lg font-semibold text-blue-800 mb-4">KYC Evidence and Legal Compliance</h3>
+                  <ul className="space-y-3">
+                    <li className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="text-gray-700 leading-relaxed"><strong>KYC Verification:</strong> We retain KYC evidence and verification records as required by law and for fraud prevention</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="text-gray-700 leading-relaxed"><strong>Law Enforcement Cooperation:</strong> We cooperate with lawful requests from law enforcement agencies in compliance with applicable laws</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="text-gray-700 leading-relaxed"><strong>Data Transfer Transparency:</strong> All data transfers have a lawful basis and are documented for transparency</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="text-gray-700 leading-relaxed"><strong>DPO Oversight:</strong> Our Data Protection Officer oversees compliance with data protection regulations</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -326,11 +461,11 @@ export function TermsConditionsPage({ onNavigate }: TermsConditionsPageProps) {
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
-                    <span className="text-gray-700 font-medium">Email: legal@medexjob.com</span>
+                    <span className="text-gray-700 font-medium">Email: medexjob1997@gmail.com</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
-                    <span className="text-gray-700 font-medium">Phone: +91 98765 43210</span>
+                    <span className="text-gray-700 font-medium">Phone: +91 9588015208</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>

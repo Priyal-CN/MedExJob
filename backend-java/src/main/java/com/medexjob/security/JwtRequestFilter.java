@@ -33,6 +33,13 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, 
                                     FilterChain chain) throws ServletException, IOException {
         
+        // Skip JWT processing for public endpoints
+        String requestURI = request.getRequestURI();
+        if (isPublicEndpoint(requestURI)) {
+            chain.doFilter(request, response);
+            return;
+        }
+        
         final String requestTokenHeader = request.getHeader("Authorization");
         
         String email = null;
@@ -70,5 +77,16 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         }
         
         chain.doFilter(request, response);
+    }
+    
+    private boolean isPublicEndpoint(String requestURI) {
+        return requestURI.startsWith("/api/auth/") ||
+               requestURI.startsWith("/api/health") ||
+               requestURI.startsWith("/api/actuator/") ||
+               requestURI.startsWith("/h2-console") ||
+               requestURI.startsWith("/uploads/") ||
+               (requestURI.startsWith("/api/employers/") && 
+                (requestURI.contains("/kyc-submission") || 
+                 requestURI.contains("/verification-requests")));
     }
 }

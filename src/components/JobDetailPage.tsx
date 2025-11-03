@@ -1,3 +1,4 @@
+import React from 'react';
 import { MapPin, Briefcase, Calendar, Building2, GraduationCap, DollarSign, FileText, ExternalLink, Clock, Eye, User, Mail, Phone, Upload } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -7,15 +8,16 @@ import { Alert, AlertDescription } from './ui/alert';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { useEffect, useState } from 'react';
 import { fetchJob } from '../api/jobs';
 import { useParams } from 'react-router-dom';
 import { applyForJob } from '../api/applications';
 import { useAuth } from '../contexts/AuthContext';
+import { notifySavedJobsChanged } from '../utils/savedJobsEvents';
 
 interface JobDetailPageProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, entityId?: string) => void;
   showApplyDialog?: boolean;
 }
 
@@ -33,6 +35,7 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
     notes: ''
   });
   const [applying, setApplying] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const locationText = job?.location || [job?.city, job?.state].filter(Boolean).join(', ');
   const { jobId } = useParams<{ jobId: string }>();
 
@@ -48,6 +51,10 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
         const data = await fetchJob(jobId);
         setJob(data);
         setNotFound(false);
+        
+        // Check if job is already saved
+        const savedJobs = JSON.parse(localStorage.getItem('saved_jobs') || '[]');
+        setIsSaved(savedJobs.some((j: any) => j.id === data.id));
       } catch (e) {
         setNotFound(true);
       } finally {
@@ -62,6 +69,30 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
       setApplicationForm(prev => ({ ...prev, candidateName: user.name, candidateEmail: user.email }));
     }
   }, [user, showApplyDialog]);
+
+  // Sync dialog open state with route-provided prop
+  useEffect(() => {
+    setShowApplyDialog(initialShowApplyDialog);
+  }, [initialShowApplyDialog]);
+
+  // If route requests apply dialog but user isn't authenticated, redirect to login
+  useEffect(() => {
+    if (initialShowApplyDialog && !isAuthenticated) {
+      onNavigate('login');
+    }
+  }, [initialShowApplyDialog, isAuthenticated, onNavigate]);
+
+  const handleApplyClick = () => {
+    if (!isAuthenticated) {
+      onNavigate('login');
+      return;
+    }
+    if (jobId) {
+      onNavigate('job-apply', jobId);
+    }
+  };
+
+  const effectiveOpen = showApplyDialog && !loading;
 
 
   if (loading) {
@@ -87,6 +118,39 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
   const isGovernment = job.sector === 'government';
   const daysLeft = job.lastDate ? Math.ceil((new Date(job.lastDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
+  // Resolve file URLs to absolute URLs for proper display
+  const resolveFileUrl = (url?: string): string => {
+    if (!url) return '';
+
+    // 1. If it's already a full absolute URL or blob URL, return it as is
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
+      return url;
+    }
+
+    // 2. Get the API base URL from the environment
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
+
+    // 3. Handle /uploads/ paths - convert to absolute backend URL
+    // Backend serves files via /uploads/** through WebConfig
+    if (url.startsWith('/uploads/')) {
+      const base = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
+      return `${base}${url}`;
+    }
+
+    // 4. Handle /api/jobs/files/ paths (alternative endpoint)
+    if (url.startsWith('/api/jobs/files/')) {
+      const base = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
+      return `${base}${url}`;
+    }
+
+    // 5. For other relative paths, prepend API base
+    const base = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
+    const path = url.startsWith('/') ? url : `/${url}`;
+    
+    // Construct the absolute URL
+    return `${base}${path}`;
+  };
+
   const handleApplicationSubmit = async () => {
     if (!job || !token) return;
 
@@ -94,6 +158,7 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
     try {
       await applyForJob({
         jobId: job.id,
+        candidateId: user.id, // Pass the logged-in user's ID
         candidateName: applicationForm.candidateName,
         candidateEmail: applicationForm.candidateEmail,
         candidatePhone: applicationForm.candidatePhone,
@@ -111,11 +176,37 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
         resume: null,
         notes: ''
       });
+      if (jobId) {
+        onNavigate('job-detail', jobId);
+      }
     } catch (error) {
       alert('Failed to submit application. Please try again.');
       console.error('Application error:', error);
     } finally {
       setApplying(false);
+    }
+  };
+
+  const handleSaveJob = () => {
+    if (!job) return;
+    
+    const savedJobs = JSON.parse(localStorage.getItem('saved_jobs') || '[]');
+    const jobExists = savedJobs.some((j: any) => j.id === job.id);
+    
+    if (jobExists) {
+      // Remove from saved
+      const updated = savedJobs.filter((j: any) => j.id !== job.id);
+      localStorage.setItem('saved_jobs', JSON.stringify(updated));
+      setIsSaved(false);
+      alert('Job removed from saved jobs');
+      notifySavedJobsChanged(); // Notify other components
+    } else {
+      // Add to saved
+      savedJobs.push(job);
+      localStorage.setItem('saved_jobs', JSON.stringify(savedJobs));
+      setIsSaved(true);
+      alert('Job saved successfully!');
+      notifySavedJobsChanged(); // Notify other components
     }
   };
 
@@ -240,7 +331,7 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
                 <h2 className="text-xl text-gray-900 mb-4">Official Documents</h2>
                 <div className="space-y-3">
                   <Button variant="outline" className="w-full justify-start" asChild>
-                    <a href={job.pdfUrl} target="_blank" rel="noopener noreferrer">
+                    <a href={resolveFileUrl(job.pdfUrl)} target="_blank" rel="noopener noreferrer">
                       <FileText className="w-4 h-4 mr-2" />
                       View Official Notification PDF
                       <ExternalLink className="w-4 h-4 ml-auto" />
@@ -249,9 +340,11 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
                   <div className="mt-4">
                     <div className="text-sm text-gray-600 mb-2">Inline Preview</div>
                     <div className="border rounded overflow-hidden">
-                      <object data={job.pdfUrl} type="application/pdf" width="100%" height="600px">
-                        <iframe src={job.pdfUrl} title="PDF Preview" width="100%" height="600px" />
-                      </object>
+                      <a href={resolveFileUrl(job.pdfUrl)} target="_blank" rel="noopener noreferrer">
+                        <object data={resolveFileUrl(job.pdfUrl)} type="application/pdf" width="100%" height="600px">
+                          <iframe src={resolveFileUrl(job.pdfUrl)} title="PDF Preview" width="100%" height="600px" />
+                        </object>
+                      </a>
                     </div>
                   </div>
                   {job.applyLink && (
@@ -294,12 +387,11 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
                       Apply directly through our platform or visit the official website.
                     </p>
                     {isAuthenticated ? (
-                      <Dialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
-                        <DialogTrigger asChild>
-                          <Button className="w-full bg-green-600 hover:bg-green-700">
-                            Apply Now
-                          </Button>
-                        </DialogTrigger>
+                      <>
+                        <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleApplyClick}>
+                          Apply Now
+                        </Button>
+                      <Dialog open={effectiveOpen} onOpenChange={(open) => { setShowApplyDialog(open); if (!open && jobId) onNavigate('job-detail', jobId); }}>
                       <DialogContent className="sm:max-w-[500px]">
                         <DialogHeader>
                           <DialogTitle>Apply for {job.title}</DialogTitle>
@@ -375,6 +467,7 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
                         </div>
                       </DialogContent>
                       </Dialog>
+                      </>
                     ) : (
                       <div className="space-y-3">
                         <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => onNavigate('login')}>
@@ -394,7 +487,7 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
                     )}
                     {job.pdfUrl && (
                       <Button variant="outline" className="w-full" asChild>
-                        <a href={job.pdfUrl} target="_blank" rel="noopener noreferrer">
+                        <a href={resolveFileUrl(job.pdfUrl)} target="_blank" rel="noopener noreferrer">
                           <FileText className="w-4 h-4 mr-2" />
                           View Notification
                         </a>
@@ -407,12 +500,11 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
                       Apply directly through our platform. Your profile and resume will be shared with the employer.
                     </p>
                     {isAuthenticated ? (
-                      <Dialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
-                        <DialogTrigger asChild>
-                          <Button className="w-full bg-green-600 hover:bg-green-700">
-                            Apply Now
-                          </Button>
-                        </DialogTrigger>
+                      <>
+                        <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleApplyClick}>
+                          Apply Now
+                        </Button>
+                      <Dialog open={effectiveOpen} onOpenChange={(open) => { setShowApplyDialog(open); if (!open && jobId) onNavigate('job-detail', jobId); }}>
                       <DialogContent className="sm:max-w-[500px]">
                         <DialogHeader>
                           <DialogTitle>Apply for {job.title}</DialogTitle>
@@ -488,6 +580,7 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
                         </div>
                       </DialogContent>
                       </Dialog>
+                      </>
                     ) : (
                       <div className="space-y-3">
                         <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => onNavigate('login')}>
@@ -501,8 +594,12 @@ export function JobDetailPage({ onNavigate, showApplyDialog: initialShowApplyDia
 
                 <Separator />
 
-                <Button variant="outline" className="w-full">
-                  Save Job
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handleSaveJob}
+                >
+                  {isSaved ? '✓ Saved' : 'Save Job'}
                 </Button>
               </div>
             </Card>

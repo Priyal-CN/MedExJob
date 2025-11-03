@@ -1,19 +1,23 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import apiClient from '../api/apiClient';
+import axios from 'axios';
 
 interface User {
   id: string;
   name: string;
   email: string;
   role: 'candidate' | 'employer' | 'admin';
+  isVerified?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null; // This is already here, just confirming it's part of the context
   login: (email: string, password: string) => Promise<User>;
-  register: (userData: any) => Promise<void>;
+  register: (userData: any) => Promise<User>;
   logout: () => void;
   isAuthenticated: boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,8 +34,6 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE || 'http://localhost:8081';
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -43,51 +45,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setToken(storedToken);
       try {
         const parsed = JSON.parse(storedUser);
-        const normalized = parsed && typeof parsed === 'object'
-          ? { ...parsed, role: typeof parsed.role === 'string' ? parsed.role.toLowerCase() : parsed.role }
+        const normalized = parsed && typeof parsed === 'object' // Ensure role is UPPERCASE
+          ? { ...parsed, role: typeof parsed.role === 'string' ? parsed.role.toUpperCase() : parsed.role }
           : parsed;
+        
+        console.log('🔍 Loading user from localStorage:', normalized);
+        console.log('🔍 Stored role:', normalized.role);
+        
         setUser(normalized);
-      } catch {
-        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Error parsing stored user data:', error);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
       }
     }
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
     try {
-      const response = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+      const response = await apiClient.post('/api/auth/login', {
+        email: email.trim(),
+        password: password.trim(),
       });
 
-      if (!response.ok) {
-        let message = 'Login failed';
-        try {
-          const errorData = await response.json();
-          // Support ProblemDetail (Spring) and our custom error shape
-          if (errorData.message) message = errorData.message;
-          else if (errorData.error) message = errorData.error;
-          else if (errorData.detail) message = errorData.detail;
-          else if (errorData.errors && typeof errorData.errors === 'object') {
-            const first = Object.values(errorData.errors)[0] as string | undefined;
-            if (first) message = first;
-          }
-        } catch {
-          const text = await response.text();
-          if (text) message = text;
-        }
-        throw new Error(message);
-      }
-
-      const data = await response.json();
+      const data = response.data;
       const { token: jwtToken, user: userData } = data;
 
-      const normalizedUser = userData && typeof userData === 'object'
-        ? { ...userData, role: typeof userData.role === 'string' ? userData.role.toLowerCase() : userData.role }
+      const normalizedUser = userData && typeof userData === 'object' // Ensure role is UPPERCASE
+        ? { ...userData, role: typeof userData.role === 'string' ? userData.role.toUpperCase() : userData.role }
         : userData;
+
+      // Debug logging
+      console.log('🔍 Backend user data:', userData);
+      console.log('🔍 Normalized user data:', normalizedUser);
+      console.log('🔍 User role after normalization:', normalizedUser.role);
+      console.log('🔍 Role type:', typeof normalizedUser.role);
+      console.log('🔍 Role comparison tests:');
+      console.log('  - ADMIN:', normalizedUser.role === 'ADMIN');
+      console.log('  - EMPLOYER:', normalizedUser.role === 'EMPLOYER');
+      console.log('  - CANDIDATE:', normalizedUser.role === 'CANDIDATE');
 
       setToken(jwtToken);
       setUser(normalizedUser);
@@ -95,11 +91,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(normalizedUser));
       return normalizedUser;
     } catch (error) {
+      // Axios error handling is more direct
+      if (axios.isAxiosError(error) && error.response) {
+        const errorData = error.response.data;
+        let message = 'Login failed';
+        if (errorData.message) message = errorData.message;
+        else if (errorData.error) message = errorData.error;
+        else if (errorData.detail) message = errorData.detail;
+        throw new Error(message);
+      }
       throw error;
     }
   };
 
-  const register = async (userData: any) => {
+  const register = async (userData: any): Promise<User> => {
     try {
       // Convert role to uppercase to match backend enum
       const payload = {
@@ -107,25 +112,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         role: userData.role.toUpperCase()
       };
 
-      const response = await fetch(`${API_BASE}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      console.log('🔍 Registration payload:', payload);
+      console.log('🔍 Role being sent:', payload.role);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        // Throw the structured error object from the backend
-        if (errorData.errors) {
-          throw errorData;
-        }
-        throw new Error(errorData.error || 'Registration failed');
-      }
-
-      // Registration was successful, no need to process response body here.
+      const response = await apiClient.post('/api/auth/register', payload);
+      
+      console.log('🔍 Registration response:', response.data);
+      console.log('🔍 Registered user role:', response.data.role);
+      
+      return response.data;
     } catch (error) {
+      // Axios error handling
+      if (axios.isAxiosError(error) && error.response?.data?.errors) {
+        // If there are specific validation errors, re-throw them for the form to handle.
+        // The new response interceptor will handle generic messages.
+        throw error.response.data;
+      }
       throw error;
     }
   };
@@ -137,6 +139,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('user');
   };
 
+  const refreshUser = async () => {
+    if (!token) return;
+    
+    try {
+      const response = await apiClient.get('/api/auth/me');
+      const userData = response.data;
+      
+      const normalizedUser = userData && typeof userData === 'object'
+        ? { ...userData, role: typeof userData.role === 'string' ? userData.role.toUpperCase() : userData.role }
+        : userData;
+      
+      setUser(normalizedUser);
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -144,6 +164,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     isAuthenticated: !!user,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

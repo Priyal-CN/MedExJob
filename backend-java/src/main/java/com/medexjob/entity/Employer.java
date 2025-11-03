@@ -20,7 +20,7 @@ public class Employer {
     private UUID id;
     
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = true)
     private User user;
     
     @NotBlank
@@ -54,6 +54,20 @@ public class Employer {
     @Size(max = 10)
     @Column(name = "pincode")
     private String pincode;
+    
+    @Size(max = 12)
+    @Column(name = "aadhaar_number")
+    private String aadhaarNumber;
+    
+    @Size(max = 10)
+    @Column(name = "pan_number")
+    private String panNumber;
+    
+    @Column(name = "aadhaar_document_url")
+    private String aadhaarDocumentUrl;
+    
+    @Column(name = "pan_document_url")
+    private String panDocumentUrl;
     
     @Column(name = "is_verified", nullable = false)
     private Boolean isVerified = false;
@@ -164,6 +178,38 @@ public class Employer {
     
     public void setPincode(String pincode) {
         this.pincode = pincode;
+    }
+    
+    public String getAadhaarNumber() {
+        return aadhaarNumber;
+    }
+    
+    public void setAadhaarNumber(String aadhaarNumber) {
+        this.aadhaarNumber = aadhaarNumber;
+    }
+    
+    public String getPanNumber() {
+        return panNumber;
+    }
+    
+    public void setPanNumber(String panNumber) {
+        this.panNumber = panNumber;
+    }
+    
+    public String getAadhaarDocumentUrl() {
+        return aadhaarDocumentUrl;
+    }
+    
+    public void setAadhaarDocumentUrl(String aadhaarDocumentUrl) {
+        this.aadhaarDocumentUrl = aadhaarDocumentUrl;
+    }
+    
+    public String getPanDocumentUrl() {
+        return panDocumentUrl;
+    }
+    
+    public void setPanDocumentUrl(String panDocumentUrl) {
+        this.panDocumentUrl = panDocumentUrl;
     }
     
     public Boolean getIsVerified() {

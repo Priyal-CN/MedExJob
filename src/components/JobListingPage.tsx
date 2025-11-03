@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { JobCard } from './JobCard';
 import { FilterSidebar, FilterOptions } from './FilterSidebar';
 import { fetchJobs, fetchJobsMeta } from '../api/jobs';
+import { notifySavedJobsChanged } from '../utils/savedJobsEvents';
 
 interface JobListingPageProps {
   onNavigate: (page: string, jobId?: string) => void;
@@ -24,6 +25,7 @@ export function JobListingPage({ onNavigate, sector }: JobListingPageProps) {
   const [metaCategories, setMetaCategories] = useState<string[]>([]);
   const [metaLocations, setMetaLocations] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
 
   useEffect(() => {
     // load meta on mount
@@ -34,6 +36,10 @@ export function JobListingPage({ onNavigate, sector }: JobListingPageProps) {
         setMetaLocations(Array.isArray(meta?.locations) ? meta.locations : []);
       } catch {}
     })();
+    
+    // Load saved job IDs from localStorage
+    const savedJobs = JSON.parse(localStorage.getItem('saved_jobs') || '[]');
+    setSavedJobIds(savedJobs.map((j: any) => j.id));
   }, []);
 
   useEffect(() => {
@@ -119,6 +125,22 @@ export function JobListingPage({ onNavigate, sector }: JobListingPageProps) {
                     key={job.id}
                     job={job}
                     onViewDetails={(jobId) => onNavigate('job-detail', jobId)}
+                    onSaveJob={(jobId) => {
+                      const savedJobs = JSON.parse(localStorage.getItem('saved_jobs') || '[]');
+                      const exists = savedJobs.some((j: any) => j.id === jobId);
+                      
+                      if (exists) {
+                        const updated = savedJobs.filter((j: any) => j.id !== jobId);
+                        localStorage.setItem('saved_jobs', JSON.stringify(updated));
+                        setSavedJobIds(updated.map((j: any) => j.id));
+                      } else {
+                        savedJobs.push(job);
+                        localStorage.setItem('saved_jobs', JSON.stringify(savedJobs));
+                        setSavedJobIds(savedJobs.map((j: any) => j.id));
+                      }
+                      notifySavedJobsChanged(); // Notify other components
+                    }}
+                    isSaved={savedJobIds.includes(job.id)}
                   />
                 ))
               ) : (

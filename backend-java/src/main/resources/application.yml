@@ -1,24 +1,30 @@
 server:
-  port: 8081
+  port: 8082
 
 spring:
   application:
     name: medexjob-backend
 
   datasource:
-    url: jdbc:mysql://localhost:3306/medtech_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    username: root
-    password: 12345678
+    url: jdbc:h2:file:./data/medexjobdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
 
   jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
-      ddl-auto: update  # updates existing tables without dropping data
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         format_sql: true
     open-in-view: false
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
 
   mail:
     host: smtp.gmail.com
@@ -52,7 +58,8 @@ razorpay:
 
 # File Upload Configuration
 file:
-  upload-dir: uploads/
+  # Use an absolute path to avoid ambiguity. ${user.home} resolves to your home directory (e.g., C:\Users\YourUser)
+  upload-dir: ${user.home}/medexjob-uploads/
   max-size: 10485760 # 10MB
 
 # CORS Configuration

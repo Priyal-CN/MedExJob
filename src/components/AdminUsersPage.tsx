@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Users, Search, Filter, UserCheck, UserX, Mail, Phone, Calendar } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -30,42 +30,27 @@ export function AdminUsersPage({ onNavigate }: AdminUsersPageProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Mock data - in real app, this would come from API
-  const mockUsers: User[] = [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john.doe@example.com',
-      phone: '+1-555-0123',
-      role: 'candidate',
-      status: 'active',
-      createdDate: '2024-01-15',
-      lastLogin: '2024-10-24'
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane.smith@company.com',
-      phone: '+1-555-0456',
-      role: 'employer',
-      status: 'active',
-      createdDate: '2024-02-20',
-      lastLogin: '2024-10-23'
-    },
-    {
-      id: '3',
-      name: 'Bob Johnson',
-      email: 'bob.johnson@example.com',
-      phone: '+1-555-0789',
-      role: 'candidate',
-      status: 'inactive',
-      createdDate: '2024-03-10',
-      lastLogin: '2024-09-15'
-    }
-  ];
+  // Load users from backend
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const mod = await import('../api/users');
+        const resp = await mod.fetchUsers({ role: roleFilter as any, status: statusFilter as any, search: searchTerm });
+        setUsers((resp.content || []) as any);
+      } catch (e) {
+        setUsers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+    // Re-load when filters/search change
+  }, [roleFilter, statusFilter, searchTerm]);
 
-  const filteredUsers = mockUsers.filter(user => {
+  const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
@@ -99,11 +84,14 @@ export function AdminUsersPage({ onNavigate }: AdminUsersPageProps) {
     }
   };
 
-  const handleStatusChange = (userId: string, newStatus: string) => {
-    // In real app, this would call an API
-    setUsers(users.map(user =>
-      user.id === userId ? { ...user, status: newStatus as User['status'] } : user
-    ));
+  const handleStatusChange = async (userId: string, newStatus: string) => {
+    try {
+      const mod = await import('../api/users');
+      await mod.updateUserStatus(userId, newStatus as any);
+      setUsers(prev => prev.map(u => (u.id === userId ? { ...u, status: newStatus as User['status'] } : u)));
+    } catch (e) {
+      // noop
+    }
   };
 
   return (
@@ -164,6 +152,9 @@ export function AdminUsersPage({ onNavigate }: AdminUsersPageProps) {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Users ({filteredUsers.length})</h2>
             </div>
+            {loading && (
+              <div className="text-sm text-gray-500 mb-4">Loading users...</div>
+            )}
             <Table>
               <TableHeader>
                 <TableRow>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Flag, Shield, AlertTriangle, CheckCircle, XCircle, Eye, User, Building2, FileText, Mail, Phone } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -622,5 +622,3 @@ function FraudReportForm({ onSubmit, onCancel }: FraudReportFormProps) {
     </form>
   );
 }
-
-

@@ -1,78 +1,70 @@
 package com.medexjob.controller;
 
-import com.medexjob.dto.LoginRequest;
-import com.medexjob.dto.ResetPasswordRequest;
-import com.medexjob.dto.ForgotPasswordRequest;
-import com.medexjob.dto.RegisterRequest;
 import com.medexjob.dto.AuthResponse;
+import com.medexjob.dto.LoginRequest;
+import com.medexjob.dto.AadhaarVerifyRequest;
+import com.medexjob.dto.RegisterRequest; // Corrected import order
+import com.medexjob.entity.User;
 import com.medexjob.service.AuthService;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
 
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:5174", "http://localhost:3000"})
 public class AuthController {
-    
+
     @Autowired
-   private AuthService authService;
+    private AuthService authService;
 
-    
+    /**
+     * Handles user registration requests.
+     * @param registerRequest DTO containing registration details.
+     * @return The newly created User object.
+     */
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
-        authService.register(registerRequest);
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "User registered successfully. Please check your email to verify your account.");
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public ResponseEntity<User> registerUser(@RequestBody RegisterRequest registerRequest) {
+        User newUser = authService.register(registerRequest);
+        return ResponseEntity.ok(newUser);
     }
-    
+
+    /**
+     * Handles user login requests.
+     * @param loginRequest DTO containing login credentials.
+     * @return An AuthResponse containing the JWT and user details.
+     */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
-        AuthResponse response = authService.login(loginRequest);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<AuthResponse> loginUser(@RequestBody LoginRequest loginRequest) {
+        AuthResponse authResponse = authService.login(loginRequest);
+        return ResponseEntity.ok(authResponse);
     }
-    
+
+    /**
+     * Fetches the details of the currently authenticated user.
+     * @return The User object for the authenticated user.
+     */
     @GetMapping("/me")
-    @PreAuthorize("hasAnyRole('CANDIDATE', 'EMPLOYER', 'ADMIN')")
-    public ResponseEntity<?> getCurrentUser() {
-        return ResponseEntity.ok(authService.getCurrentUser());
+    public ResponseEntity<User> getCurrentUser() {
+        User currentUser = authService.getCurrentUser();
+        return ResponseEntity.ok(currentUser);
     }
-    
-    @GetMapping("/verify-email")
-    public ResponseEntity<?> verifyEmail(@RequestParam String token) {
-        authService.verifyEmail(token);
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Email verified successfully");
-        return ResponseEntity.ok(response);
+
+    /**
+     * Handles Aadhaar verification requests.
+     * @param verifyRequest DTO containing email, aadhaarNumber, and otp.
+     * @return A success response.
+     */
+    @PostMapping("/verify-aadhaar")
+    public ResponseEntity<?> verifyAadhaar(@RequestBody AadhaarVerifyRequest verifyRequest) {
+        authService.verifyAadhaar(verifyRequest);
+        return ResponseEntity.ok(Map.of("message", "Aadhaar verified successfully. Account activated."));
     }
-    
-    @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-        authService.requestPasswordReset(request.getEmail());
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Password reset link sent to your email");
-        return ResponseEntity.ok(response);
-    }
-    
-    @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        authService.resetPassword(request.getToken(), request.getNewPassword());
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Password reset successfully");
-        return ResponseEntity.ok(response);
-    }
+
+    // You can add other endpoints here for password reset, email verification, etc.
+    // For example:
+    // @PostMapping("/forgot-password") ...
+    // @GetMapping("/verify-email") ...
 }
-
-
-
-
-
-

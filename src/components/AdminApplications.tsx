@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, XCircle, Calendar, FileText, Eye, MessageSquare, Phone, Mail, MapPin, Search, Filter } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -11,6 +11,7 @@ import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { fetchApplications, updateApplicationStatus } from '../api/applications';
+import { createNotification } from '../api/notifications';
 import { useAuth } from '../contexts/AuthContext';
 import { ApplicationResponse } from '../api/applications';
 
@@ -35,20 +36,39 @@ export function AdminApplications({ onNavigate }: AdminApplicationsProps) {
     loadApplications();
   }, [filters]);
 
+  // Auto-refresh applications periodically and on tab focus
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadApplications();
+    }, 30000); // every 30s
+
+    const onVisibility = () => {
+      if (!document.hidden) {
+        loadApplications();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [token, filters.status, filters.search, filters.jobId]);
+
   const loadApplications = async () => {
     if (!token) return;
 
     setLoading(true);
     try {
       const params: any = {
-        status: filters.status as 'applied' | 'shortlisted' | 'interview' | 'selected' | 'rejected' | undefined,
+        status: filters.status && filters.status !== 'all' ? filters.status as 'applied' | 'shortlisted' | 'interview' | 'selected' | 'rejected' : undefined,
         search: filters.search || undefined,
         jobId: filters.jobId || undefined,
         page: 0,
         size: 50,
         sort: 'appliedDate,desc'
       };
-      const response = await fetchApplications(params, token);
+      const response = await fetchApplications(params);
       setApplications(response.content || []);
     } catch (error) {
       console.error('Failed to load applications:', error);
@@ -122,7 +142,40 @@ export function AdminApplications({ onNavigate }: AdminApplicationsProps) {
     if (!token) return;
 
     try {
-      await updateApplicationStatus(applicationId, newStatus, token, notes, interviewDate);
+      await updateApplicationStatus(applicationId, newStatus, notes, interviewDate);
+      
+      // Create notification for interview scheduling
+      if (newStatus === 'interview' && interviewDate) {
+        const application = applications.find(app => app.id === applicationId);
+        if (application) {
+          try {
+            await createNotification({
+              userId: application.candidateId,
+              type: 'interview_scheduled',
+              title: 'Interview Scheduled',
+              message: `Your interview for "${application.jobTitle}" at ${application.jobOrganization} has been scheduled for ${new Date(interviewDate).toLocaleDateString('en-IN', { 
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}`,
+              metadata: {
+                applicationId: application.id,
+                jobId: application.jobId,
+                jobTitle: application.jobTitle,
+                organization: application.jobOrganization,
+                interviewDate: interviewDate,
+                notes: notes
+              }
+            });
+          } catch (notificationError) {
+            console.warn('Failed to create interview notification:', notificationError);
+            // Don't fail the status update if notification fails
+          }
+        }
+      }
+      
       await loadApplications(); // Reload applications
       setIsStatusDialogOpen(false);
       setIsInterviewDialogOpen(false);
@@ -151,7 +204,7 @@ export function AdminApplications({ onNavigate }: AdminApplicationsProps) {
   };
 
   const filteredApplications = applications.filter(app => {
-    const matchesStatus = !filters.status || app.status === filters.status;
+    const matchesStatus = !filters.status || filters.status === 'all' || app.status === filters.status;
     const matchesSearch = !filters.search ||
       app.candidateName.toLowerCase().includes(filters.search.toLowerCase()) ||
       app.jobTitle.toLowerCase().includes(filters.search.toLowerCase()) ||
@@ -159,6 +212,28 @@ export function AdminApplications({ onNavigate }: AdminApplicationsProps) {
     return matchesStatus && matchesSearch;
   });
 
+  const resolveFileUrl = (url?: string): string => {
+    if (!url) return '';
+
+    // 1. If it's already a full absolute URL, return it as is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+
+    // 2. Get the API base URL from the environment
+    const apiBase = import.meta.env.VITE_API_BASE_URL;
+
+    if (apiBase) {
+      // Ensure apiBase does NOT end with a slash and url DOES start with a slash
+      const base = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
+      const path = url.startsWith('/') ? url : `/${url}`;
+      
+      // Construct the absolute URL
+      return `${base}${path}`;
+    }
+    
+    return url;
+  };
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -206,7 +281,7 @@ export function AdminApplications({ onNavigate }: AdminApplicationsProps) {
                     <SelectValue placeholder="All Statuses" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Statuses</SelectItem>
+                    <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="applied">Applied</SelectItem>
                     <SelectItem value="shortlisted">Shortlisted</SelectItem>
                     <SelectItem value="interview">Interview</SelectItem>
@@ -408,7 +483,7 @@ export function AdminApplications({ onNavigate }: AdminApplicationsProps) {
                           <FileText className="w-4 h-4 text-gray-400" />
                           {application.resumeUrl ? (
                             <Button variant="link" size="sm" className="p-0 h-auto" asChild>
-                              <a href={application.resumeUrl} target="_blank" rel="noopener noreferrer">
+                              <a href={resolveFileUrl(application.resumeUrl)} target="_blank" rel="noopener noreferrer">
                                 View Resume
                               </a>
                             </Button>

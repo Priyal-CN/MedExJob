@@ -22,13 +22,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         // Note: The 'username' parameter here is the email extracted from the JWT 'sub' claim.
-        User user = userRepository.findByEmailAndIsActiveTrue(username)
+        // CORRECTION: During login, we must find the user by email regardless of active status.
+        // The AuthService.login() method is responsible for checking if the account is active and verified.
+        User user = userRepository.findByEmail(username)
             .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
-
-        // Add a check to ensure the user is verified.
-        if (!user.getIsVerified()) {
-            throw new UsernameNotFoundException("User email not verified: " + username);
-        }
 
         List<SimpleGrantedAuthority> authorities = Collections.singletonList(
             new SimpleGrantedAuthority("ROLE_" + user.getRole().name())

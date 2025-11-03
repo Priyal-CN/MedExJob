@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -23,14 +23,35 @@ export function EmployerVerification({ onNavigate }: EmployerVerificationProps) 
 
       try {
         setLoading(true);
-        const employerData = await fetchEmployer(user.id, token);
-        setEmployer(employerData);
+        
+        try {
+          const employerData = await fetchEmployer(user.id);
+          setEmployer(employerData);
 
-        // If verification is approved, redirect to employer dashboard
-        if (employerData.verificationStatus === 'approved') {
-          onNavigate('employer-dashboard');
-          return;
+          // If verification is approved, redirect to employer dashboard
+          if (employerData.verificationStatus === 'approved') {
+            onNavigate('employer-dashboard');
+            return;
+          }
+        } catch (fetchError: any) {
+          // If employer doesn't exist (404), create a basic employer record
+          if (fetchError.message && fetchError.message.includes('[404]')) {
+            console.log('Employer record not found, creating basic employer data for verification');
+            const basicEmployerData: EmployerResponse = {
+              id: user.id,
+              companyName: user.name + "'s Company",
+              verificationStatus: 'pending',
+              plan: 'basic',
+              isVerified: false,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            setEmployer(basicEmployerData);
+          } else {
+            throw fetchError;
+          }
         }
+        
       } catch (err) {
         console.error('Failed to fetch employer data:', err);
         setError('Failed to load verification status. Please try again.');

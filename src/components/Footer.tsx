@@ -1,3 +1,4 @@
+import React from 'react';
 import { Briefcase, Mail, Phone, MapPin, Facebook, Twitter, Linkedin, Instagram } from 'lucide-react';
 
 interface FooterProps {
@@ -78,20 +79,14 @@ export function Footer({ onNavigate }: FooterProps) {
                 </button>
               </li>
               <li>
-                <button className="hover:text-blue-400 transition-colors">
+                <button 
+                  onClick={() => onNavigate('subscription')}
+                  className="hover:text-blue-400 transition-colors"
+                >
                   Pricing Plans
                 </button>
               </li>
-              <li>
-                <button className="hover:text-blue-400 transition-colors">
-                  Post a Job
-                </button>
-              </li>
-              <li>
-                <button className="hover:text-blue-400 transition-colors">
-                  Browse Candidates
-                </button>
-              </li>
+            
             </ul>
           </div>
 
@@ -101,16 +96,13 @@ export function Footer({ onNavigate }: FooterProps) {
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2">
                 <Mail className="w-4 h-4 mt-1 flex-shrink-0" />
-                <span>contact@medexjob.com</span>
+                <span>medexjob1997@gmail.com</span>
               </li>
               <li className="flex items-start gap-2">
                 <Phone className="w-4 h-4 mt-1 flex-shrink-0" />
-                <span>+91 98765 43210</span>
+                <span>+91 9588015208</span>
               </li>
-              <li className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
-                <span>123, Medical Plaza, New Delhi, India</span>
-              </li>
+              
             </ul>
           </div>
         </div>

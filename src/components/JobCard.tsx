@@ -1,3 +1,4 @@
+import React from 'react';
 import { MapPin, Briefcase, Calendar, Star, Building2 } from 'lucide-react';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
